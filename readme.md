@@ -1,0 +1,23 @@
+# Dokumentace 
+
+backend/
+│
+├─ app/
+│  ├─ __init__.py
+│  ├─ config.py
+│  │
+│  ├─ models/
+│  │   ├─ user.py
+│  │   └─ client.py
+│  │
+│  ├─ routes/
+│  │   ├─ auth.py
+│  │   └─ clients.py
+│  │
+│  ├─ services/
+│  │   └─ auth_service.py
+│  │
+│  └─ extensions.py
+│
+├─ migrations/
+└─ run.py
