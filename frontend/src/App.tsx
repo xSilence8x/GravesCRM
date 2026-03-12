@@ -1,0 +1,65 @@
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import AppLayout from "@/components/AppLayout";
+import Dashboard from "@/pages/Dashboard";
+import ClientsPage from "@/pages/ClientsPage";
+import GravesPage from "@/pages/GravesPage";
+import OrdersPage from "@/pages/OrdersPage";
+import InvoicesPage from "@/pages/InvoicesPage";
+import MapPage from "@/pages/MapPage";
+import RemindersPage from "@/pages/RemindersPage";
+import AuthPage from "@/pages/AuthPage";
+import NotFound from "./pages/NotFound";
+
+const queryClient = new QueryClient();
+
+function ProtectedRoutes() {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
+  if (!user) return <Navigate to="/auth" replace />;
+
+  return (
+    <AppLayout>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/clients" element={<ClientsPage />} />
+        <Route path="/graves" element={<GravesPage />} />
+        <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/invoices" element={<InvoicesPage />} />
+        <Route path="/map" element={<MapPage />} />
+        <Route path="/reminders" element={<RemindersPage />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </AppLayout>
+  );
+}
+
+function AuthRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user) return <Navigate to="/" replace />;
+  return <AuthPage />;
+}
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/auth" element={<AuthRoute />} />
+            <Route path="/*" element={<ProtectedRoutes />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
+  </QueryClientProvider>
+);
+
+export default App;

@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 220 25% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 10%;
+
+    --primary: 220 70% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 20% 93%;
+    --secondary-foreground: 220 25% 15%;
+
+    --muted: 215 20% 95%;
+    --muted-foreground: 215 15% 47%;
+
+    --accent: 35 95% 55%;
+    --accent-foreground: 35 95% 15%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 60% 42%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 92% 15%;
+
+    --border: 214 20% 90%;
+    --input: 214 20% 90%;
+    --ring: 220 70% 50%;
+
+    --radius: 0.625rem;
+
+    --sidebar-background: 220 25% 12%;
+    --sidebar-foreground: 215 20% 75%;
+    --sidebar-primary: 220 70% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 25% 18%;
+    --sidebar-accent-foreground: 215 20% 90%;
+    --sidebar-border: 220 20% 20%;
+    --sidebar-ring: 220 70% 50%;
+    --sidebar-muted: 215 15% 47%;
+
+    --chart-1: 220 70% 50%;
+    --chart-2: 152 60% 42%;
+    --chart-3: 35 95% 55%;
+    --chart-4: 280 65% 55%;
+    --chart-5: 0 72% 51%;
+  }
+
+  .dark {
+    --background: 220 25% 8%;
+    --foreground: 210 20% 95%;
+    --card: 220 25% 12%;
+    --card-foreground: 210 20% 95%;
+    --popover: 220 25% 12%;
+    --popover-foreground: 210 20% 95%;
+    --primary: 220 70% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 20% 18%;
+    --secondary-foreground: 210 20% 90%;
+    --muted: 220 20% 18%;
+    --muted-foreground: 215 15% 60%;
+    --accent: 35 95% 55%;
+    --accent-foreground: 35 95% 95%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 220 20% 20%;
+    --input: 220 20% 20%;
+    --ring: 220 70% 60%;
+    --sidebar-background: 220 30% 6%;
+    --sidebar-foreground: 215 20% 70%;
+    --sidebar-primary: 220 70% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 25% 14%;
+    --sidebar-accent-foreground: 215 20% 90%;
+    --sidebar-border: 220 25% 14%;
+    --sidebar-ring: 220 70% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .stat-card {
+    @apply rounded-xl border bg-card p-5 shadow-sm transition-shadow hover:shadow-md;
+  }
+
+  .page-header {
+    @apply mb-6 flex flex-col gap-1;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold text-foreground;
+  }
+
+  .page-description {
+    @apply text-sm text-muted-foreground;
+  }
+
+  .status-planned {
+    @apply bg-secondary text-secondary-foreground;
+  }
+
+  .status-in-progress {
+    @apply bg-primary/10 text-primary;
+  }
+
+  .status-completed {
+    @apply bg-[hsl(var(--success))]/10 text-[hsl(var(--success))];
+  }
+
+  .status-cancelled {
+    @apply bg-destructive/10 text-destructive;
+  }
+
+  .status-overdue {
+    @apply bg-destructive/10 text-destructive;
+  }
+
+  .status-due-soon {
+    @apply bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))];
+  }
+
+  .status-upcoming {
+    @apply bg-primary/10 text-primary;
+  }
+}
