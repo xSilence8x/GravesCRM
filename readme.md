@@ -1,5 +1,5 @@
 # Dokumentace 
-
+```bash
 backend/
 │
 ├─ app/
@@ -21,3 +21,14 @@ backend/
 │
 ├─ migrations/
 └─ run.py
+```
+
+## Run app:
+Run Flask:
+```bash
+flask run
+```
+Run React:
+```bash
+frontend/npm run dev
+```
