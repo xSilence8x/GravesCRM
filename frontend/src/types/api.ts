@@ -12,12 +12,12 @@ export interface AuthUser {
   nickname: string;
 }
 
-export interface Client {
   id: number;
   full_name: string;
   first_name: string | null;
   last_name: string | null;
   company: string | null;
+  ico: string | null;
   email: string;
   phone: string;
   billing_address: string;

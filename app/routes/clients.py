@@ -13,6 +13,7 @@ def client_to_dict(c):
         "first_name": c.first_name,
         "last_name": c.last_name,
         "company": c.company,
+        "ico": c.ico or "",
         "email": c.email or "",
         "phone": c.phone or "",
         "billing_address": c.address or "",
@@ -40,16 +41,15 @@ def get_client(client_id):
 @login_required
 def create_client():
     data = request.get_json()
-    full_name = data.get("full_name", "")
-    parts = full_name.strip().split(" ", 1)
     client = Client(
-        first_name=parts[0] if parts else "",
-        last_name=parts[1] if len(parts) > 1 else "",
-        company=data.get("company"),
-        email=data.get("email"),
-        phone=data.get("phone"),
-        address=data.get("billing_address"),
-        notes=data.get("notes"),
+        first_name=data.get("first_name", ""),
+        last_name=data.get("last_name", ""),
+        company=data.get("company", ""),
+        ico=data.get("ico", ""),
+        email=data.get("email", ""),
+        phone=data.get("phone", ""),
+        address=data.get("billing_address", ""),
+        notes=data.get("notes", ""),
     )
     db.session.add(client)
     db.session.commit()
@@ -62,10 +62,14 @@ def update_client(client_id):
     c = Client.query.get_or_404(client_id)
     data = request.get_json()
 
-    if "full_name" in data:
-        parts = data["full_name"].strip().split(" ", 1)
-        c.first_name = parts[0] if parts else ""
-        c.last_name = parts[1] if len(parts) > 1 else ""
+    if "first_name" in data:
+        c.first_name = data["first_name"]
+    if "last_name" in data:
+        c.last_name = data["last_name"]
+    if "company" in data:
+        c.company = data["company"]
+    if "ico" in data:
+        c.ico = data["ico"]
     if "email" in data:
         c.email = data["email"]
     if "phone" in data:

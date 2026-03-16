@@ -19,9 +19,10 @@ import { toast } from "@/hooks/use-toast";
 type ReminderStatus = Database["public"]["Enums"]["reminder_status"];
 
 const statusConfig: Record<ReminderStatus, { label: string; className: string; icon: typeof AlertTriangle; bg: string; text: string }> = {
-  overdue: { label: "Overdue", className: "status-overdue", icon: AlertTriangle, bg: "bg-destructive/10", text: "text-destructive" },
-  "due-soon": { label: "Due Soon", className: "status-due-soon", icon: Clock, bg: "bg-[hsl(var(--warning))]/10", text: "text-[hsl(var(--warning))]" },
-  upcoming: { label: "Upcoming", className: "status-upcoming", icon: CalendarCheck, bg: "bg-primary/10", text: "text-primary" },
+  "po termínu": { label: "Po termínu", className: "status-overdue", icon: AlertTriangle, bg: "bg-destructive/10", text: "text-destructive" },
+  "brzy": { label: "Brzy", className: "status-due-soon", icon: Clock, bg: "bg-[hsl(var(--warning))]/10", text: "text-[hsl(var(--warning))]" },
+  "nadcházející": { label: "Nadcházející", className: "status-upcoming", icon: CalendarCheck, bg: "bg-primary/10", text: "text-primary" },
+  "deaktivovaný": { label: "Deaktivovaný", className: "status-deactivated", icon: CalendarCheck, bg: "bg-muted/10", text: "text-muted-foreground" },
 };
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];

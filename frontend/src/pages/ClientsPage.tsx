@@ -22,18 +22,28 @@ export default function ClientsPage() {
 
   const filtered = clients.filter(
     (c) =>
-      c.full_name.toLowerCase().includes(search.toLowerCase()) ||
-      c.email.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search)
+      ((c.first_name || "").toLowerCase().includes(search.toLowerCase()) ||
+        (c.last_name || "").toLowerCase().includes(search.toLowerCase()) ||
+        (c.company || "").toLowerCase().includes(search.toLowerCase())) ||
+      (c.email || "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.phone || "").includes(search)
   );
 
   const getGraveCount = (clientId: number) =>
     graves.filter((g: any) => g.client_id === clientId).length;
 
-  const handleAddClient = (data: { fullName: string; email: string; phone: string; billingAddress: string; notes: string }) => {
+  const handleAddClient = (data: { firstName: string; lastName: string; company: string; email: string; phone: string; billingAddress: string; notes: string }) => {
     addClient.mutate(
-      { full_name: data.fullName, email: data.email, phone: data.phone, billing_address: data.billingAddress, notes: data.notes },
-      { onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }) }
+      {
+        first_name: data.firstName,
+        last_name: data.lastName,
+        company: data.company,
+        email: data.email,
+        phone: data.phone,
+        billing_address: data.billingAddress,
+        notes: data.notes,
+      },
+      { onError: (e) => toast({ title: "Chyba", description: e.message, variant: "destructive" }) }
     );
   };
 
@@ -79,16 +89,16 @@ export default function ClientsPage() {
             <Card key={client.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <CardTitle className="text-base">{client.full_name}</CardTitle>
+                  <CardTitle className="text-base">{[client.first_name, client.last_name].filter(Boolean).join(" ") || client.company || "—"}</CardTitle>
                   <div className="flex items-center gap-1">
                     <Badge variant="secondary" className="text-xs">
                       <MapPin className="h-3 w-3 mr-1" />
-                      {getGraveCount(client.id)} graves
+                      {getGraveCount(client.id)} hrobů
                     </Badge>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditClient(client)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(client.id, client.full_name)}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(client.id, [client.first_name, client.last_name].filter(Boolean).join(" ") || client.company || "—")}> 
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>

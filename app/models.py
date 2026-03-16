@@ -5,7 +5,7 @@ from app.extensions import db
 ORDER_STATUSES = {"plánovaný", "probíhá", "hotový", "zrušený"}
 CLEANING_FREQUENCIES = {"1x", "2x", "4x", "vlastní"}
 PHOTO_TYPES = {"před", "po"}
-REMINDER_STATUSES = {"nadcházející", "brzy", "po termínu"}
+REMINDER_STATUSES = {"nadcházející", "brzy", "po termínu", "deaktivovaný"}
 
 
 class AdditionalService(db.Model):
@@ -79,7 +79,12 @@ class Grave(db.Model):
         nullable=False,
         index=True,
     )
-    cemetery_name = db.Column(db.String(255), nullable=False)
+    graveyard_id = db.Column(
+        db.Integer,
+        db.ForeignKey("graveyards.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     grave_number = db.Column(db.String(100), nullable=False)
     latitude = db.Column(db.Float, nullable=False, default=49.170529066991264)
     longitude = db.Column(db.Float, nullable=False, default=16.594459112480603)
@@ -91,6 +96,7 @@ class Grave(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
 
     client = db.relationship("Client", back_populates="graves")
+    graveyard = db.relationship("Graveyard", back_populates="graves")
     maintenance_orders = db.relationship(
         "MaintenanceOrder",
         back_populates="grave",
@@ -105,7 +111,25 @@ class Grave(db.Model):
     )
 
     def __repr__(self):
-        return f"<Grave id={self.id} cemetery={self.cemetery_name} grave_number={self.grave_number}>"
+        return f"<Grave id={self.id} graveyard_id={self.graveyard_id} grave_number={self.grave_number}>"
+
+
+class Graveyard(db.Model):
+    __tablename__ = "graveyards"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False, default="Ústřední hřbitov")
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+
+    graves = db.relationship(
+        "Grave",
+        back_populates="graveyard",
+        lazy="selectin",
+    )
+
+    def __repr__(self):
+        return f"<Graveyard id={self.id} name={self.name}>"
 
 
 class Invoice(db.Model):

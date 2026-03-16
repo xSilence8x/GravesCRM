@@ -77,6 +77,18 @@ def create_order():
     )
     db.session.add(o)
     db.session.commit()
+
+    # Vytvoření reminderu
+    from app.models import Reminder
+    reminder = Reminder(
+        client_id=o.client_id,
+        grave_id=o.grave_id,
+        next_date=o.planned_date,
+        status="nadcházející",
+    )
+    db.session.add(reminder)
+    db.session.commit()
+
     return jsonify(order_to_dict(o)), 201
 
 
@@ -88,6 +100,13 @@ def update_order(order_id):
     from datetime import date
     if "status" in data:
         o.status = data["status"]
+        # Pokud je objednávka dokončena, deaktivuj reminder
+        if data["status"] == "hotový":
+            from app.models import Reminder
+            reminder = Reminder.query.filter_by(client_id=o.client_id, grave_id=o.grave_id, next_date=o.planned_date).first()
+            if reminder:
+                reminder.status = "deaktivovaný"
+                db.session.commit()
     if "planned_date" in data:
         o.planned_date = date.fromisoformat(data["planned_date"])
     if "completion_date" in data:
