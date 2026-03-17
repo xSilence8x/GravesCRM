@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_required
 from app.extensions import db
-from app.models import Grave, Client
+from app.models import Grave, Graveyard
 
 graves_bp = Blueprint("graves", __name__)
 
@@ -10,11 +10,14 @@ def grave_to_dict(g):
     client_name = ""
     if g.client:
         client_name = f"{g.client.first_name or ''} {g.client.last_name or ''}".strip() or g.client.company or ""
+    cemetery_name = g.graveyard.name if g.graveyard else ""
     return {
         "id": g.id,
         "client_id": g.client_id,
+        "graveyard_id": g.graveyard_id,
         "clients": {"full_name": client_name},
-        "cemetery_name": g.cemetery_name,
+        "graveyard": {"name": cemetery_name},
+        "cemetery_name": cemetery_name,
         "grave_number": g.grave_number,
         "latitude": g.latitude,
         "longitude": g.longitude,
@@ -44,9 +47,18 @@ def get_grave(grave_id):
 @login_required
 def create_grave():
     data = request.get_json()
+    graveyard_id = data.get("graveyard_id")
+
+    if not graveyard_id and data.get("cemetery_name"):
+        graveyard = Graveyard.query.filter_by(name=data.get("cemetery_name")).first()
+        graveyard_id = graveyard.id if graveyard else None
+
+    if not graveyard_id:
+        return jsonify({"error": "Hřbitov je povinný."}), 400
+
     g = Grave(
-        client_id=data["client_id"],
-        cemetery_name=data["cemetery_name"],
+        client_id=int(data["client_id"]),
+        graveyard_id=int(graveyard_id),
         grave_number=data["grave_number"],
         latitude=data.get("latitude", 49.170529),
         longitude=data.get("longitude", 16.594459),
@@ -65,7 +77,10 @@ def create_grave():
 def update_grave(grave_id):
     g = Grave.query.get_or_404(grave_id)
     data = request.get_json()
-    for field in ["client_id", "cemetery_name", "grave_number", "latitude", "longitude",
+    if "graveyard_id" in data:
+        g.graveyard_id = int(data["graveyard_id"])
+
+    for field in ["client_id", "grave_number", "latitude", "longitude",
                   "cleaning_frequency", "custom_frequency_months", "base_price", "notes"]:
         if field in data:
             setattr(g, field, data[field])

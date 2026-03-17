@@ -23,7 +23,7 @@ def invoice_to_dict(i):
                 "phone": o.client.phone or "" if o.client else "",
             },
             "graves": {
-                "cemetery_name": o.grave.cemetery_name if o.grave else "",
+                "cemetery_name": o.grave.graveyard.name if o.grave and o.grave.graveyard else "",
                 "grave_number": o.grave.grave_number if o.grave else "",
             },
             "additional_services": [

@@ -4,9 +4,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ApiError } from "@/lib/apiClient";
 import AppLayout from "@/components/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import ClientsPage from "@/pages/ClientsPage";
+import GraveyardsPage from "@/pages/GraveyardsPage";
 import GravesPage from "@/pages/GravesPage";
 import OrdersPage from "@/pages/OrdersPage";
 import InvoicesPage from "@/pages/InvoicesPage";
@@ -15,7 +17,18 @@ import RemindersPage from "@/pages/RemindersPage";
 import AuthPage from "@/pages/AuthPage";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        if (error instanceof ApiError && error.status === 401) {
+          return false;
+        }
+        return failureCount < 2;
+      },
+    },
+  },
+});
 
 function ProtectedRoutes() {
   const { user, loading } = useAuth();
@@ -27,6 +40,7 @@ function ProtectedRoutes() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/clients" element={<ClientsPage />} />
+        <Route path="/graveyards" element={<GraveyardsPage />} />
         <Route path="/graves" element={<GravesPage />} />
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/invoices" element={<InvoicesPage />} />
@@ -51,7 +65,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             <Route path="/auth" element={<AuthRoute />} />
             <Route path="/*" element={<ProtectedRoutes />} />

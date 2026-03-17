@@ -12,6 +12,7 @@ export interface AuthUser {
   nickname: string;
 }
 
+export interface Client {
   id: number;
   full_name: string;
   first_name: string | null;
@@ -25,9 +26,18 @@ export interface AuthUser {
   created_at: string;
 }
 
+export interface Graveyard {
+  id: number;
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+  created_at: string;
+}
+
 export interface Grave {
   id: number;
   client_id: number;
+  graveyard_id: number;
   clients: { full_name: string };
   cemetery_name: string;
   grave_number: string;

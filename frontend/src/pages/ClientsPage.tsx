@@ -32,12 +32,13 @@ export default function ClientsPage() {
   const getGraveCount = (clientId: number) =>
     graves.filter((g: any) => g.client_id === clientId).length;
 
-  const handleAddClient = (data: { firstName: string; lastName: string; company: string; email: string; phone: string; billingAddress: string; notes: string }) => {
+  const handleAddClient = (data: { firstName: string; lastName: string; company: string; ico: string; email: string; phone: string; billingAddress: string; notes: string }) => {
     addClient.mutate(
       {
         first_name: data.firstName,
         last_name: data.lastName,
         company: data.company,
+        ico: data.ico,
         email: data.email,
         phone: data.phone,
         billing_address: data.billingAddress,
@@ -47,18 +48,18 @@ export default function ClientsPage() {
     );
   };
 
-  const handleEditSave = (data: { id: number; full_name: string; email: string; phone: string; billing_address: string; notes: string }) => {
+  const handleEditSave = (data: { id: number; first_name: string; last_name: string; company: string; ico: string; email: string; phone: string; billing_address: string; notes: string }) => {
     updateClient.mutate(data, {
-      onSuccess: () => toast({ title: "Client updated" }),
-      onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+      onSuccess: () => toast({ title: "Klient upraven" }),
+      onError: (e) => toast({ title: "Chyba", description: e.message, variant: "destructive" }),
     });
   };
 
   const handleDelete = (id: number, name: string) => {
-    if (!confirm(`Delete client "${name}" and all related data?`)) return;
+    if (!confirm(`Smazat klienta "${name}" a všechna související data?`)) return;
     deleteClient.mutate(id, {
-      onSuccess: () => toast({ title: "Deleted", description: `${name} removed.` }),
-      onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+      onSuccess: () => toast({ title: "Smazáno", description: `${name} byl odebrán.` }),
+      onError: (e) => toast({ title: "Chyba", description: e.message, variant: "destructive" }),
     });
   };
 
@@ -67,8 +68,8 @@ export default function ClientsPage() {
       <div className="page-header">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="page-title">Clients</h1>
-            <p className="page-description">Manage your client directory</p>
+            <h1 className="page-title">Klienti</h1>
+            <p className="page-description">Správa adresáře klientů</p>
           </div>
           <AddClientDialog onAdd={handleAddClient} />
         </div>
@@ -76,7 +77,7 @@ export default function ClientsPage() {
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search clients..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        <Input placeholder="Hledat klienty..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
       </div>
 
       {isLoading ? (
@@ -123,7 +124,7 @@ export default function ClientsPage() {
 
       {!isLoading && filtered.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
-          <p>{clients.length === 0 ? "No clients yet. Add your first client!" : "No clients found matching your search."}</p>
+          <p>{clients.length === 0 ? "Zatím žádní klienti. Přidejte prvního klienta!" : "Nebyli nalezeni žádní klienti odpovídající hledání."}</p>
         </div>
       )}
 

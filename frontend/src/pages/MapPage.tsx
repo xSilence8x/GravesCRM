@@ -2,40 +2,56 @@ import { useState, lazy, Suspense } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGraves } from "@/hooks/useGraves";
 import { useClients } from "@/hooks/useClients";
+import { useGraveyards } from "@/hooks/useGraveyards";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const LazyMap = lazy(() => import("@/components/GraveMap"));
+const CENTRAL_BRNO_COORDS: [number, number] = [49.1697889, 16.5938528];
 
 export default function MapPage() {
   const [cemeteryFilter, setCemeteryFilter] = useState("all");
   const { data: graves = [], isLoading } = useGraves();
   const { data: clients = [] } = useClients();
+  const { data: graveyards = [] } = useGraveyards();
 
-  const cemeteries = [...new Set(graves.map((g: any) => g.cemetery_name))];
+  const cemeteries = [...new Set([...graveyards.map((g) => g.name), ...graves.map((g: any) => g.cemetery_name)])];
   const filtered = graves.filter((g: any) => cemeteryFilter === "all" || g.cemetery_name === cemeteryFilter);
-  const getClientName = (id: string) => clients.find((c) => c.id === id)?.full_name ?? "—";
+  const getClientName = (id: number) => clients.find((c) => c.id === id)?.full_name ?? "—";
+
+  const selectedGraveyard = cemeteryFilter === "all" ? null : graveyards.find((g) => g.name === cemeteryFilter);
+  const centralBrnoGraveyard = graveyards.find(
+    (g) => g.name === "Ústřední hřbitov Brno" || g.name === "Ústřední hřbitov",
+  );
 
   const graveData = filtered.map((g: any) => ({
     id: g.id, clientId: g.client_id, cemeteryName: g.cemetery_name, graveNumber: g.grave_number,
     latitude: g.latitude, longitude: g.longitude, basePrice: Number(g.base_price),
   }));
 
-  const center: [number, number] = graveData.length > 0
-    ? [graveData.reduce((s, g) => s + g.latitude, 0) / graveData.length, graveData.reduce((s, g) => s + g.longitude, 0) / graveData.length]
-    : [50.0755, 14.4378];
+  const center: [number, number] =
+    selectedGraveyard && selectedGraveyard.latitude !== null && selectedGraveyard.longitude !== null
+      ? [selectedGraveyard.latitude, selectedGraveyard.longitude]
+      : centralBrnoGraveyard && centralBrnoGraveyard.latitude !== null && centralBrnoGraveyard.longitude !== null
+        ? [centralBrnoGraveyard.latitude, centralBrnoGraveyard.longitude]
+      : graveData.length > 0
+        ? [
+            graveData.reduce((sum, grave) => sum + grave.latitude, 0) / graveData.length,
+            graveData.reduce((sum, grave) => sum + grave.longitude, 0) / graveData.length,
+          ]
+        : CENTRAL_BRNO_COORDS;
 
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="page-header">
-        <h1 className="page-title">Grave Map</h1>
-        <p className="page-description">View all grave locations on an interactive map</p>
+        <h1 className="page-title">Mapa hrobů</h1>
+        <p className="page-description">Zobrazení všech hrobů na interaktivní mapě</p>
       </div>
 
       <div className="relative" style={{ zIndex: 1000 }}>
         <Select value={cemeteryFilter} onValueChange={setCemeteryFilter}>
-          <SelectTrigger className="w-full sm:w-[250px]"><SelectValue placeholder="All cemeteries" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[250px]"><SelectValue placeholder="Všechny hřbitovy" /></SelectTrigger>
           <SelectContent position="popper" className="z-[1001]">
-            <SelectItem value="all">All cemeteries</SelectItem>
+            <SelectItem value="all">Všechny hřbitovy</SelectItem>
             {cemeteries.map((c) => <SelectItem key={String(c)} value={String(c)}>{String(c)}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -45,7 +61,7 @@ export default function MapPage() {
         {isLoading ? (
           <Skeleton className="h-full w-full" />
         ) : (
-          <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading map…</div>}>
+          <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Načítám mapu…</div>}>
             <LazyMap
               graves={graveData as any}
               center={center}

@@ -5,6 +5,18 @@ import { Grave } from "@/types/api";
 
 export type { Grave };
 
+type GraveUpsertPayload = {
+  client_id: number;
+  graveyard_id: number;
+  grave_number: string;
+  latitude: number;
+  longitude: number;
+  cleaning_frequency: Grave["cleaning_frequency"];
+  base_price: number;
+  notes: string;
+  custom_frequency_months?: number | null;
+};
+
 export function useGraves() {
   const { user } = useAuth();
   return useQuery({
@@ -20,7 +32,7 @@ export function useGraves() {
 export function useAddGrave() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (grave: Omit<Grave, "id" | "created_at" | "clients">) =>
+    mutationFn: (grave: GraveUpsertPayload) =>
       apiClient.post<Grave>("/api/graves/", grave),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["graves"] }),
   });

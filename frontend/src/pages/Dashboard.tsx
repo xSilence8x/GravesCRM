@@ -26,23 +26,23 @@ export default function Dashboard() {
   const dueSoonReminders = reminders.filter((r: any) => r.status === "due-soon");
 
   const stats = [
-    { label: "Active Clients", value: clients.length, icon: Users, color: "text-primary" },
-    { label: "Graves Managed", value: graves.length, icon: MapPin, color: "text-primary" },
-    { label: "Total Orders", value: orders.length, icon: ClipboardList, color: "text-primary" },
-    { label: "Invoices Issued", value: invoices.length, icon: FileText, color: "text-primary" },
-    { label: "Total Revenue", value: `${totalRevenue.toLocaleString()} CZK`, icon: DollarSign, color: "text-[hsl(var(--success))]" },
-    { label: "Completed", value: completedOrders.length, icon: CheckCircle, color: "text-[hsl(var(--success))]" },
+    { label: "Aktivní klienti", value: clients.length, icon: Users, color: "text-primary" },
+    { label: "Spravované hroby", value: graves.length, icon: MapPin, color: "text-primary" },
+    { label: "Celkem zakázek", value: orders.length, icon: ClipboardList, color: "text-primary" },
+    { label: "Vystavené faktury", value: invoices.length, icon: FileText, color: "text-primary" },
+    { label: "Celkové tržby", value: `${totalRevenue.toLocaleString()} Kč`, icon: DollarSign, color: "text-[hsl(var(--success))]" },
+    { label: "Dokončeno", value: completedOrders.length, icon: CheckCircle, color: "text-[hsl(var(--success))]" },
   ];
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="page-title">Dashboard</h1>
-          <p className="page-description">Overview of your grave maintenance business</p>
+          <h1 className="page-title">Přehled</h1>
+          <p className="page-description">Souhrn vašeho podnikání v údržbě hrobů</p>
         </div>
         <Button variant="ghost" size="sm" onClick={signOut}>
-          <LogOut className="h-4 w-4 mr-2" /> Sign Out
+          <LogOut className="h-4 w-4 mr-2" /> Odhlásit se
         </Button>
       </div>
 
@@ -70,10 +70,10 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" /> Overdue</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" /> Po termínu</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {overdueReminders.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No overdue tasks 🎉</p>
+              <p className="text-sm text-muted-foreground">Žádné úkoly po termínu 🎉</p>
             ) : overdueReminders.map((r: any) => (
               <div key={r.id} className="flex items-center justify-between text-sm p-2 rounded bg-destructive/5">
                 <div>
@@ -87,10 +87,10 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Clock className="h-4 w-4 text-[hsl(var(--warning))]" /> Due Soon</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Clock className="h-4 w-4 text-[hsl(var(--warning))]" /> Brzy splatné</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {dueSoonReminders.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No tasks due soon</p>
+              <p className="text-sm text-muted-foreground">Žádné úkoly s blížícím se termínem</p>
             ) : dueSoonReminders.map((r: any) => (
               <div key={r.id} className="flex items-center justify-between text-sm p-2 rounded bg-[hsl(var(--warning))]/5">
                 <div>

@@ -21,8 +21,8 @@ export default function InvoicesPage() {
     addInvoice.mutate(
       { order_id: order.id, invoice_number: num, total_price: order.total_price },
       {
-        onSuccess: () => toast({ title: "Invoice created", description: num }),
-        onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+        onSuccess: () => toast({ title: "Faktura vytvořena", description: num }),
+        onError: (e) => toast({ title: "Chyba", description: e.message, variant: "destructive" }),
       }
     );
   };
@@ -35,13 +35,13 @@ export default function InvoicesPage() {
     const client = order?.clients;
 
     doc.setFontSize(20);
-    doc.text("INVOICE", 14, 22);
+    doc.text("FAKTURA", 14, 22);
     doc.setFontSize(10);
-    doc.text(`Invoice #: ${invoice.invoice_number}`, 14, 32);
-    doc.text(`Issue date: ${invoice.issue_date}`, 14, 38);
-    doc.text(`Due date: ${invoice.due_date}`, 14, 44);
+    doc.text(`Číslo faktury: ${invoice.invoice_number}`, 14, 32);
+    doc.text(`Datum vystavení: ${invoice.issue_date}`, 14, 38);
+    doc.text(`Datum splatnosti: ${invoice.due_date}`, 14, 44);
 
-    doc.text("Bill to:", 14, 56);
+    doc.text("Odběratel:", 14, 56);
     doc.setFontSize(11);
     doc.text(client?.full_name ?? "—", 14, 62);
     doc.setFontSize(9);
@@ -49,17 +49,17 @@ export default function InvoicesPage() {
     doc.text(`${client?.email ?? ""} | ${client?.phone ?? ""}`, 14, 74);
 
     const rows = [
-      ["Base maintenance", `${order?.graves?.cemetery_name} #${order?.graves?.grave_number}`, `${Number(order?.total_price ?? 0).toLocaleString()} CZK`],
+      ["Základní údržba", `${order?.graves?.cemetery_name} #${order?.graves?.grave_number}`, `${Number(order?.total_price ?? 0).toLocaleString()} Kč`],
     ];
     (order?.additional_services || []).forEach((s: any) => {
-      rows.push([s.name, s.note || "", `${Number(s.price).toLocaleString()} CZK`]);
+      rows.push([s.name, s.note || "", `${Number(s.price).toLocaleString()} Kč`]);
     });
 
-    autoTable(doc, { startY: 82, head: [["Service", "Details", "Price"]], body: rows });
+    autoTable(doc, { startY: 82, head: [["Služba", "Detail", "Cena"]], body: rows });
 
     const finalY = (doc as any).lastAutoTable?.finalY ?? 120;
     doc.setFontSize(12);
-    doc.text(`Total: ${Number(invoice.total_price).toLocaleString()} CZK`, 14, finalY + 12);
+    doc.text(`Celkem: ${Number(invoice.total_price).toLocaleString()} Kč`, 14, finalY + 12);
 
     doc.save(`${invoice.invoice_number}.pdf`);
   };
@@ -67,19 +67,19 @@ export default function InvoicesPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="page-header">
-        <h1 className="page-title">Invoices</h1>
-        <p className="page-description">Generate and manage invoices</p>
+        <h1 className="page-title">Faktury</h1>
+        <p className="page-description">Vystavování a správa faktur</p>
       </div>
 
       {completedWithoutInvoice.length > 0 && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="p-4">
-            <p className="text-sm font-medium mb-2">Completed orders without invoice:</p>
+            <p className="text-sm font-medium mb-2">Dokončené zakázky bez faktury:</p>
             <div className="space-y-2">
               {completedWithoutInvoice.map((o: any) => (
                 <div key={o.id} className="flex items-center justify-between">
                   <span className="text-sm">{o.graves?.cemetery_name} #{o.graves?.grave_number} — {o.clients?.full_name}</span>
-                  <Button size="sm" onClick={() => generateInvoice(o)}><Plus className="h-3 w-3 mr-1" /> Generate</Button>
+                  <Button size="sm" onClick={() => generateInvoice(o)}><Plus className="h-3 w-3 mr-1" /> Vytvořit</Button>
                 </div>
               ))}
             </div>
@@ -108,13 +108,13 @@ export default function InvoicesPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="text-sm space-y-1">
-                  <p>Client: <span className="font-medium">{client?.full_name ?? "—"}</span></p>
-                  <p>Grave: {order?.graves?.cemetery_name} #{order?.graves?.grave_number}</p>
+                  <p>Klient: <span className="font-medium">{client?.full_name ?? "—"}</span></p>
+                  <p>Hrob: {order?.graves?.cemetery_name} #{order?.graves?.grave_number}</p>
                   <div className="flex gap-4">
-                    <span>Issued: {inv.issue_date}</span>
-                    <span>Due: {inv.due_date}</span>
+                    <span>Vystaveno: {inv.issue_date}</span>
+                    <span>Splatnost: {inv.due_date}</span>
                   </div>
-                  <p className="font-semibold">{Number(inv.total_price).toLocaleString()} CZK</p>
+                  <p className="font-semibold">{Number(inv.total_price).toLocaleString()} Kč</p>
                 </CardContent>
               </Card>
             );
@@ -124,7 +124,7 @@ export default function InvoicesPage() {
 
       {!isLoading && invoices.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
-          <p>No invoices yet. Complete an order to generate one.</p>
+          <p>Zatím žádné faktury. Dokončete zakázku a vytvořte první.</p>
         </div>
       )}
     </div>

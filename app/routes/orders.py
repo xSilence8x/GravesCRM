@@ -29,7 +29,10 @@ def order_to_dict(o):
         client_name = f"{o.client.first_name or ''} {o.client.last_name or ''}".strip() or o.client.company or ""
     grave_info = {}
     if o.grave:
-        grave_info = {"cemetery_name": o.grave.cemetery_name, "grave_number": o.grave.grave_number}
+        grave_info = {
+            "cemetery_name": o.grave.graveyard.name if o.grave.graveyard else "",
+            "grave_number": o.grave.grave_number,
+        }
     return {
         "id": o.id,
         "client_id": o.client_id,
@@ -101,7 +104,7 @@ def update_order(order_id):
     if "status" in data:
         o.status = data["status"]
         # Pokud je objednávka dokončena, deaktivuj reminder
-        if data["status"] == "hotový":
+        if data["status"] in {"hotový", "completed"}:
             from app.models import Reminder
             reminder = Reminder.query.filter_by(client_id=o.client_id, grave_id=o.grave_id, next_date=o.planned_date).first()
             if reminder:

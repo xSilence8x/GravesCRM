@@ -13,6 +13,22 @@
 
 const BASE_URL = "";  // Same origin — works both in dev (proxy) and production
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = "ApiError";
+  }
+}
+
+let unauthorizedHandler: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  unauthorizedHandler = handler;
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -29,7 +45,10 @@ async function request<T>(
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`API error ${res.status}: ${text}`);
+    if (res.status === 401 && unauthorizedHandler) {
+      unauthorizedHandler();
+    }
+    throw new ApiError(res.status, `API error ${res.status}: ${text}`);
   }
 
   return res.json() as Promise<T>;

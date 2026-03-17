@@ -127,7 +127,7 @@
   }
 
   .status-in-progress {
-    @apply bg-primary/10 text-primary;
+    @apply bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))];
   }
 
   .status-completed {

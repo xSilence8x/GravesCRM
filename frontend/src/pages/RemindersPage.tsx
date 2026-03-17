@@ -15,18 +15,25 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-
-type ReminderStatus = Database["public"]["Enums"]["reminder_status"];
+import { ReminderStatus } from "@/types/api";
 
 const statusConfig: Record<ReminderStatus, { label: string; className: string; icon: typeof AlertTriangle; bg: string; text: string }> = {
-  "po termínu": { label: "Po termínu", className: "status-overdue", icon: AlertTriangle, bg: "bg-destructive/10", text: "text-destructive" },
-  "brzy": { label: "Brzy", className: "status-due-soon", icon: Clock, bg: "bg-[hsl(var(--warning))]/10", text: "text-[hsl(var(--warning))]" },
-  "nadcházející": { label: "Nadcházející", className: "status-upcoming", icon: CalendarCheck, bg: "bg-primary/10", text: "text-primary" },
-  "deaktivovaný": { label: "Deaktivovaný", className: "status-deactivated", icon: CalendarCheck, bg: "bg-muted/10", text: "text-muted-foreground" },
+  overdue: { label: "Po termínu", className: "status-overdue", icon: AlertTriangle, bg: "bg-destructive/10", text: "text-destructive" },
+  "due-soon": { label: "Brzy", className: "status-due-soon", icon: Clock, bg: "bg-[hsl(var(--warning))]/10", text: "text-[hsl(var(--warning))]" },
+  upcoming: { label: "Nadcházející", className: "status-upcoming", icon: CalendarCheck, bg: "bg-primary/10", text: "text-primary" },
 };
 
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+function normalizeReminderStatus(status: string): ReminderStatus | "hidden" {
+  if (status === "overdue" || status === "due-soon" || status === "upcoming") return status;
+  if (status === "po termínu") return "overdue";
+  if (status === "brzy") return "due-soon";
+  if (status === "nadcházející") return "upcoming";
+  if (status === "deaktivovaný" || status === "deactivated") return "hidden";
+  return "upcoming";
+}
+
+const WEEKDAYS = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"];
+const MONTHS = ["Leden", "Únor", "Březen", "Duben", "Květen", "Červen", "Červenec", "Srpen", "Září", "Říjen", "Listopad", "Prosinec"];
 
 function getDaysInMonth(y: number, m: number) { return new Date(y, m + 1, 0).getDate(); }
 function getFirstDay(y: number, m: number) { const d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; }
@@ -45,7 +52,11 @@ export default function RemindersPage() {
 
   const clientGraves = graves.filter((g: any) => g.client_id === form.client_id);
 
-  const filtered = reminders.filter((r: any) => statusFilter === "all" || r.status === statusFilter);
+  const filtered = reminders.filter((r: any) => {
+    const normalizedStatus = normalizeReminderStatus(String(r.status ?? ""));
+    if (normalizedStatus === "hidden") return false;
+    return statusFilter === "all" || normalizedStatus === statusFilter;
+  });
 
   const remindersByDate = new Map<string, any[]>();
   filtered.forEach((r: any) => {
@@ -67,14 +78,14 @@ export default function RemindersPage() {
 
   const handleAdd = () => {
     if (!form.client_id || !form.grave_id || !form.next_date) {
-      toast({ title: "Error", description: "Client, grave, and date are required.", variant: "destructive" });
+      toast({ title: "Chyba", description: "Klient, hrob a datum jsou povinné.", variant: "destructive" });
       return;
     }
     addReminder.mutate(
-      { client_id: form.client_id, grave_id: form.grave_id, next_date: format(form.next_date, "yyyy-MM-dd"), status: form.status },
+      { client_id: Number(form.client_id), grave_id: Number(form.grave_id), next_date: format(form.next_date, "yyyy-MM-dd"), status: form.status },
       {
-        onSuccess: () => { setAddOpen(false); setForm({ client_id: "", grave_id: "", next_date: undefined, status: "upcoming" }); toast({ title: "Reminder created" }); },
-        onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+        onSuccess: () => { setAddOpen(false); setForm({ client_id: "", grave_id: "", next_date: undefined, status: "upcoming" }); toast({ title: "Připomínka vytvořena" }); },
+        onError: (e) => toast({ title: "Chyba", description: e.message, variant: "destructive" }),
       }
     );
   };
@@ -83,49 +94,49 @@ export default function RemindersPage() {
     <div className="space-y-4 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="page-title">Maintenance Reminders</h1>
-          <p className="page-description">Upcoming and overdue maintenance tasks</p>
+          <h1 className="page-title">Připomínky údržby</h1>
+          <p className="page-description">Nadcházející a opožděné úkoly údržby</p>
         </div>
         <div className="flex gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="All statuses" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Všechny stavy" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="overdue">Overdue</SelectItem>
-              <SelectItem value="due-soon">Due Soon</SelectItem>
-              <SelectItem value="upcoming">Upcoming</SelectItem>
+              <SelectItem value="all">Všechny stavy</SelectItem>
+              <SelectItem value="overdue">Po termínu</SelectItem>
+              <SelectItem value="due-soon">Brzy</SelectItem>
+              <SelectItem value="upcoming">Nadcházející</SelectItem>
             </SelectContent>
           </Select>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-2" />Add Reminder</Button>
+              <Button><Plus className="h-4 w-4 mr-2" />Přidat připomínku</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
-              <DialogHeader><DialogTitle>New Reminder</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>Nová připomínka</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <Label>Client *</Label>
+                  <Label>Klient *</Label>
                   <Select value={form.client_id} onValueChange={(v) => setForm((f) => ({ ...f, client_id: v, grave_id: "" }))}>
-                    <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
-                    <SelectContent>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}</SelectContent>
+                    <SelectTrigger><SelectValue placeholder="Vyberte klienta" /></SelectTrigger>
+                    <SelectContent>{clients.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.full_name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label>Grave *</Label>
+                  <Label>Hrob *</Label>
                   <Select value={form.grave_id} onValueChange={(v) => setForm((f) => ({ ...f, grave_id: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select grave" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Vyberte hrob" /></SelectTrigger>
                     <SelectContent>
-                      {clientGraves.map((g: any) => <SelectItem key={g.id} value={g.id}>{g.cemetery_name} / #{g.grave_number}</SelectItem>)}
+                      {clientGraves.map((g: any) => <SelectItem key={g.id} value={String(g.id)}>{g.cemetery_name} / #{g.grave_number}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label>Date *</Label>
+                  <Label>Datum *</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className={cn("w-full justify-start text-left", !form.next_date && "text-muted-foreground")}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {form.next_date ? format(form.next_date, "PPP") : "Pick a date"}
+                        {form.next_date ? format(form.next_date, "PPP") : "Vyberte datum"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -134,19 +145,19 @@ export default function RemindersPage() {
                   </Popover>
                 </div>
                 <div className="space-y-1">
-                  <Label>Status</Label>
+                  <Label>Stav</Label>
                   <Select value={form.status} onValueChange={(v: any) => setForm((f) => ({ ...f, status: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="upcoming">Upcoming</SelectItem>
-                      <SelectItem value="due-soon">Due Soon</SelectItem>
-                      <SelectItem value="overdue">Overdue</SelectItem>
+                      <SelectItem value="upcoming">Nadcházející</SelectItem>
+                      <SelectItem value="due-soon">Brzy</SelectItem>
+                      <SelectItem value="overdue">Po termínu</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
-                  <Button onClick={handleAdd} disabled={addReminder.isPending}>Create</Button>
+                  <Button variant="outline" onClick={() => setAddOpen(false)}>Zrušit</Button>
+                  <Button onClick={handleAdd} disabled={addReminder.isPending}>Vytvořit</Button>
                 </div>
               </div>
             </DialogContent>
@@ -159,8 +170,8 @@ export default function RemindersPage() {
       ) : reminders.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <CalendarCheck className="h-12 w-12 mx-auto mb-4 opacity-40" />
-          <p className="text-lg font-medium">No reminders yet</p>
-          <p className="text-sm mt-1">Add your first reminder to see it on the calendar.</p>
+          <p className="text-lg font-medium">Zatím žádné připomínky</p>
+          <p className="text-sm mt-1">Přidejte první připomínku a zobrazí se v kalendáři.</p>
         </div>
       ) : (
         <Card className="overflow-hidden">
@@ -187,15 +198,20 @@ export default function RemindersPage() {
                   <div className={`text-xs font-medium mb-1 ${isToday ? "text-primary font-bold" : "text-muted-foreground"}`}>{day}</div>
                   <div className="space-y-0.5">
                     {dayReminders.slice(0, 3).map((r: any) => (
+                      (() => {
+                        const normalizedStatus = normalizeReminderStatus(String(r.status ?? ""));
+                        return (
                       <div key={r.id} className={`text-[11px] leading-tight px-1.5 py-0.5 rounded truncate ${
-                        r.status === "overdue" ? "bg-destructive/10 text-destructive" :
-                        r.status === "due-soon" ? "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]" :
+                        normalizedStatus === "overdue" ? "bg-destructive/10 text-destructive" :
+                        normalizedStatus === "due-soon" ? "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]" :
                         "bg-primary/10 text-primary"
                       }`}>
                         {r.clients?.full_name ?? "—"}
                       </div>
+                        );
+                      })()
                     ))}
-                    {dayReminders.length > 3 && <div className="text-[10px] text-muted-foreground px-1.5">+{dayReminders.length - 3} more</div>}
+                    {dayReminders.length > 3 && <div className="text-[10px] text-muted-foreground px-1.5">+{dayReminders.length - 3} dalších</div>}
                   </div>
                 </div>
               );
@@ -206,10 +222,10 @@ export default function RemindersPage() {
 
       <Dialog open={!!selectedReminders} onOpenChange={(open) => !open && setSelectedReminders(null)}>
         <DialogContent className="sm:max-w-lg">
-          <DialogHeader><DialogTitle>Reminder Details</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Detail připomínek</DialogTitle></DialogHeader>
           <div className="space-y-3 max-h-[60vh] overflow-y-auto">
             {selectedReminders?.map((r: any) => {
-              const config = statusConfig[r.status as ReminderStatus];
+              const config = statusConfig[normalizeReminderStatus(String(r.status ?? ""))];
               const Icon = config.icon;
               return (
                 <Card key={r.id}>
@@ -227,7 +243,7 @@ export default function RemindersPage() {
                         </div>
                         {r.graves && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            Base price: {Number(r.graves.base_price).toLocaleString()} CZK · Frequency: {r.graves.cleaning_frequency}/year
+                            Základní cena: {Number(r.graves.base_price).toLocaleString()} Kč · Četnost: {r.graves.cleaning_frequency}/rok
                           </p>
                         )}
                       </div>

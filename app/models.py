@@ -86,8 +86,8 @@ class Grave(db.Model):
         index=True,
     )
     grave_number = db.Column(db.String(100), nullable=False)
-    latitude = db.Column(db.Float, nullable=False, default=49.170529066991264)
-    longitude = db.Column(db.Float, nullable=False, default=16.594459112480603)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
     cleaning_frequency = db.Column(db.String(20), nullable=False)
     custom_frequency_months = db.Column(db.Integer, nullable=True)
     base_price = db.Column(db.Numeric(10, 2), nullable=False, default=0)
@@ -119,6 +119,8 @@ class Graveyard(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False, default="Ústřední hřbitov")
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
 

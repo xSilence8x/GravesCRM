@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Users,
+  Landmark,
   MapPin,
   ClipboardList,
   FileText,
@@ -24,13 +25,14 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Clients", url: "/clients", icon: Users },
-  { title: "Graves", url: "/graves", icon: MapPin },
-  { title: "Orders", url: "/orders", icon: ClipboardList },
-  { title: "Invoices", url: "/invoices", icon: FileText },
-  { title: "Map", url: "/map", icon: Map },
-  { title: "Reminders", url: "/reminders", icon: Bell },
+  { title: "Přehled", url: "/", icon: LayoutDashboard },
+  { title: "Klienti", url: "/clients", icon: Users },
+  { title: "Hřbitovy", url: "/graveyards", icon: Landmark },
+  { title: "Hroby", url: "/graves", icon: MapPin },
+  { title: "Objednávky", url: "/orders", icon: ClipboardList },
+  { title: "Faktury", url: "/invoices", icon: FileText },
+  { title: "Mapa", url: "/map", icon: Map },
+  { title: "Připomínky", url: "/reminders", icon: Bell },
 ];
 
 export function AppSidebar() {
@@ -55,7 +57,7 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>Navigace</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (

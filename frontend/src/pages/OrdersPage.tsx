@@ -28,7 +28,7 @@ const statusStyles: Record<OrderStatus, string> = {
   cancelled: "status-cancelled",
 };
 const statusLabels: Record<OrderStatus, string> = {
-  planned: "Planned", "in-progress": "In Progress", completed: "Completed", cancelled: "Cancelled",
+  planned: "Plánováno", "in-progress": "Probíhá", completed: "Dokončeno", cancelled: "Zrušeno",
 };
 
 export default function OrdersPage() {
@@ -49,9 +49,12 @@ export default function OrdersPage() {
 
   const [form, setForm] = useState({ client_id: "", grave_id: "", planned_date: undefined as Date | undefined, notes: "" });
 
-  const clientGraves = graves.filter((g: any) => g.client_id === form.client_id);
+  const clientGraves = graves.filter((g: any) => g.client_id === Number(form.client_id));
 
   const filtered = orders.filter((o: any) => {
+    if ((statusFilter === "all" || statusFilter === "planned" || statusFilter === "in-progress" || statusFilter === "cancelled") && o.status === "completed") {
+      return false;
+    }
     const clientName = o.clients?.full_name ?? "";
     const graveLabel = `${o.graves?.cemetery_name ?? ""} ${o.graves?.grave_number ?? ""}`;
     const matchSearch = clientName.toLowerCase().includes(search.toLowerCase()) || graveLabel.toLowerCase().includes(search.toLowerCase());
@@ -61,14 +64,14 @@ export default function OrdersPage() {
 
   const handleAdd = () => {
     if (!form.client_id || !form.grave_id || !form.planned_date) {
-      toast({ title: "Error", description: "Client, grave, and date are required.", variant: "destructive" });
+      toast({ title: "Chyba", description: "Klient, hrob a datum jsou povinné.", variant: "destructive" });
       return;
     }
     addOrder.mutate(
-      { client_id: form.client_id, grave_id: form.grave_id, planned_date: format(form.planned_date, "yyyy-MM-dd"), notes: form.notes },
+      { client_id: Number(form.client_id), grave_id: Number(form.grave_id), planned_date: format(form.planned_date, "yyyy-MM-dd"), notes: form.notes },
       {
-        onSuccess: () => { setOpen(false); setForm({ client_id: "", grave_id: "", planned_date: undefined, notes: "" }); toast({ title: "Order created" }); },
-        onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+        onSuccess: () => { setOpen(false); setForm({ client_id: "", grave_id: "", planned_date: undefined, notes: "" }); toast({ title: "Zakázka vytvořena" }); },
+        onError: (e) => toast({ title: "Chyba", description: e.message, variant: "destructive" }),
       }
     );
   };
@@ -81,8 +84,8 @@ export default function OrdersPage() {
 
   const handleEditSave = (data: any) => {
     updateOrder.mutate(data, {
-      onSuccess: () => toast({ title: "Order updated" }),
-      onError: (e) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+      onSuccess: () => toast({ title: "Zakázka upravena" }),
+      onError: (e) => toast({ title: "Chyba", description: e.message, variant: "destructive" }),
     });
   };
 
@@ -91,8 +94,8 @@ export default function OrdersPage() {
     uploadPhoto.mutate(
       { orderId: photoUpload.orderId, file: e.target.files[0], type: photoUpload.type },
       {
-        onSuccess: () => { setPhotoUpload(null); toast({ title: "Photo uploaded" }); },
-        onError: (err) => toast({ title: "Upload error", description: err.message, variant: "destructive" }),
+        onSuccess: () => { setPhotoUpload(null); toast({ title: "Fotografie nahrána" }); },
+        onError: (err) => toast({ title: "Chyba nahrání", description: err.message, variant: "destructive" }),
       }
     );
   };
@@ -102,39 +105,39 @@ export default function OrdersPage() {
       <div className="page-header">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="page-title">Maintenance Orders</h1>
-            <p className="page-description">Track and manage all maintenance work</p>
+            <h1 className="page-title">Objednávky údržby</h1>
+            <p className="page-description">Sledování a správa všech prací údržby</p>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-2" />New Order</Button>
+              <Button><Plus className="h-4 w-4 mr-2" />Nová zakázka</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
-              <DialogHeader><DialogTitle>New Maintenance Order</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>Nová zakázka údržby</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <Label>Client *</Label>
+                  <Label>Klient *</Label>
                   <Select value={form.client_id} onValueChange={(v) => setForm((f) => ({ ...f, client_id: v, grave_id: "" }))}>
-                    <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
-                    <SelectContent>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}</SelectContent>
+                    <SelectTrigger><SelectValue placeholder="Vyberte klienta" /></SelectTrigger>
+                    <SelectContent>{clients.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.full_name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label>Grave *</Label>
+                  <Label>Hrob *</Label>
                   <Select value={form.grave_id} onValueChange={(v) => setForm((f) => ({ ...f, grave_id: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select grave" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Vyberte hrob" /></SelectTrigger>
                     <SelectContent>
-                      {clientGraves.map((g: any) => <SelectItem key={g.id} value={g.id}>{g.cemetery_name} / #{g.grave_number}</SelectItem>)}
+                      {clientGraves.map((g: any) => <SelectItem key={g.id} value={String(g.id)}>{g.cemetery_name} / #{g.grave_number}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label>Planned Date *</Label>
+                  <Label>Plánované datum *</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className={cn("w-full justify-start text-left", !form.planned_date && "text-muted-foreground")}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {form.planned_date ? format(form.planned_date, "PPP") : "Pick a date"}
+                        {form.planned_date ? format(form.planned_date, "PPP") : "Vyberte datum"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -143,12 +146,12 @@ export default function OrdersPage() {
                   </Popover>
                 </div>
                 <div className="space-y-1">
-                  <Label>Notes</Label>
+                  <Label>Poznámky</Label>
                   <Textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} />
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                  <Button onClick={handleAdd} disabled={addOrder.isPending}>Create</Button>
+                  <Button variant="outline" onClick={() => setOpen(false)}>Zrušit</Button>
+                  <Button onClick={handleAdd} disabled={addOrder.isPending}>Vytvořit</Button>
                 </div>
               </div>
             </DialogContent>
@@ -159,16 +162,16 @@ export default function OrdersPage() {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search orders..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Hledat zakázky..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="All statuses" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Všechny stavy" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="planned">Planned</SelectItem>
-            <SelectItem value="in-progress">In Progress</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="all">Všechny stavy</SelectItem>
+            <SelectItem value="planned">Plánováno</SelectItem>
+            <SelectItem value="in-progress">Probíhá</SelectItem>
+            <SelectItem value="completed">Dokončeno</SelectItem>
+            <SelectItem value="cancelled">Zrušeno</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -210,12 +213,12 @@ export default function OrdersPage() {
                 {expanded && (
                   <CardContent className="border-t pt-4 space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                      <div><span className="text-muted-foreground">Planned:</span> <span className="font-medium">{order.planned_date}</span></div>
-                      <div><span className="text-muted-foreground">Completed:</span> <span className="font-medium">{order.completion_date ?? "—"}</span></div>
+                      <div><span className="text-muted-foreground">Plánováno:</span> <span className="font-medium">{order.planned_date}</span></div>
+                      <div><span className="text-muted-foreground">Dokončeno:</span> <span className="font-medium">{order.completion_date ?? "—"}</span></div>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      <Label className="text-xs font-medium">Change status:</Label>
+                      <Label className="text-xs font-medium">Změnit stav:</Label>
                       {(["planned", "in-progress", "completed", "cancelled"] as OrderStatus[]).map((s) => (
                         <Button key={s} size="sm" variant={order.status === s ? "default" : "outline"} className="text-xs h-7"
                           onClick={() => handleStatusChange(order.id, s)}>
@@ -226,7 +229,7 @@ export default function OrdersPage() {
 
                     {services.length > 0 && (
                       <div>
-                        <p className="text-sm font-medium mb-2">Additional Services</p>
+                        <p className="text-sm font-medium mb-2">Doplňkové služby</p>
                         <div className="space-y-1">
                           {services.map((s: any) => (
                             <div key={s.id} className="flex justify-between text-sm p-2 rounded bg-muted/50">
@@ -240,7 +243,7 @@ export default function OrdersPage() {
 
                     <div>
                       <p className="text-sm font-medium mb-2 flex items-center gap-1">
-                        <Camera className="h-4 w-4" /> Photos ({photos.length})
+                        <Camera className="h-4 w-4" /> Fotografie ({photos.length})
                       </p>
                       {photos.length > 0 && (
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
@@ -256,10 +259,10 @@ export default function OrdersPage() {
                       )}
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" className="text-xs" onClick={() => setPhotoUpload({ orderId: order.id, type: "before" })}>
-                          <Upload className="h-3 w-3 mr-1" /> Before
+                          <Upload className="h-3 w-3 mr-1" /> Před
                         </Button>
                         <Button size="sm" variant="outline" className="text-xs" onClick={() => setPhotoUpload({ orderId: order.id, type: "after" })}>
-                          <Upload className="h-3 w-3 mr-1" /> After
+                          <Upload className="h-3 w-3 mr-1" /> Po
                         </Button>
                       </div>
                     </div>
@@ -268,10 +271,10 @@ export default function OrdersPage() {
 
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setEditOrder(order); }}>
-                        <Pencil className="h-3.5 w-3.5 mr-1" /> Edit Order
+                        <Pencil className="h-3.5 w-3.5 mr-1" /> Upravit zakázku
                       </Button>
-                      <Button variant="destructive" size="sm" onClick={() => { if (confirm("Delete this order?")) deleteOrder.mutate(order.id); }}>
-                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete Order
+                      <Button variant="destructive" size="sm" onClick={() => { if (confirm("Smazat tuto zakázku?")) deleteOrder.mutate(order.id); }}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Smazat zakázku
                       </Button>
                     </div>
                   </CardContent>
@@ -284,7 +287,7 @@ export default function OrdersPage() {
 
       {!isLoading && filtered.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
-          <p>{orders.length === 0 ? "No orders yet. Create your first maintenance order!" : "No orders found matching your criteria."}</p>
+          <p>{orders.length === 0 ? "Zatím žádné zakázky. Vytvořte první zakázku údržby!" : "Nebyly nalezeny žádné zakázky odpovídající kritériím."}</p>
         </div>
       )}
 

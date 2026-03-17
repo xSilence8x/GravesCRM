@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { apiClient } from "@/lib/apiClient";
+import { apiClient, setUnauthorizedHandler } from "@/lib/apiClient";
 import { AuthUser } from "@/types/api";
+import { toast } from "@/hooks/use-toast";
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -18,11 +19,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check existing session on mount
   useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setUser((prev) => {
+        if (prev) {
+          toast({
+            title: "Relace vypršela",
+            description: "Přihlaš se prosím znovu.",
+            variant: "destructive",
+          });
+        }
+        return null;
+      });
+    });
+
     apiClient
       .get<{ user: AuthUser | null }>("/api/auth/me")
       .then((data) => setUser(data.user))
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
+
+    return () => setUnauthorizedHandler(null);
   }, []);
 
   const signIn = async (email: string, password: string): Promise<{ error: Error | null }> => {

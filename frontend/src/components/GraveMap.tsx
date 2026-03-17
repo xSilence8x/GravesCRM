@@ -16,7 +16,7 @@ interface GraveMapProps {
   graves: GraveData[];
   center: [number, number];
   zoom: number;
-  getClientName: (id: number) => number;
+  getClientName: (id: number) => string;
   cemeteryFilter: string;
 }
 
@@ -45,9 +45,9 @@ export default function GraveMap({ graves, center, zoom, getClientName, cemetery
       marker.bindPopup(`
         <div style="font-size:13px;">
           <p style="font-weight:bold;margin:0 0 4px">${grave.cemeteryName}</p>
-          <p style="margin:0 0 2px">Grave #${grave.graveNumber}</p>
+          <p style="margin:0 0 2px">Hrob č. ${grave.graveNumber}</p>
           <p style="margin:0 0 2px;color:#666">${getClientName(grave.clientId)}</p>
-          <p style="margin:0;font-weight:500">${grave.basePrice.toLocaleString()} CZK</p>
+          <p style="margin:0;font-weight:500">${grave.basePrice.toLocaleString()} Kč</p>
         </div>
       `);
     });
