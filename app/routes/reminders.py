@@ -17,6 +17,7 @@ def reminder_to_dict(r):
     if r.grave:
         grave_data = {
             "cemetery_name": r.grave.graveyard.name if r.grave.graveyard else "",
+            "name_on_grave": r.grave.name_on_grave,
             "grave_number": r.grave.grave_number,
             "base_price": float(r.grave.base_price),
             "cleaning_frequency": r.grave.cleaning_frequency,

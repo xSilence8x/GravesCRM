@@ -8,6 +8,7 @@ export type { Grave };
 type GraveUpsertPayload = {
   client_id: number;
   graveyard_id: number;
+  name_on_grave?: string | null;
   grave_number: string;
   latitude: number;
   longitude: number;

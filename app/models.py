@@ -85,6 +85,7 @@ class Grave(db.Model):
         nullable=False,
         index=True,
     )
+    name_on_grave = db.Column(db.String(255), nullable=True)
     grave_number = db.Column(db.String(100), nullable=False)
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
@@ -111,7 +112,7 @@ class Grave(db.Model):
     )
 
     def __repr__(self):
-        return f"<Grave id={self.id} graveyard_id={self.graveyard_id} grave_number={self.grave_number}>"
+        return f"<Grave id={self.id} graveyard_id={self.graveyard_id} grave_number={self.grave_number} name_on_grave={self.name_on_grave}>"
 
 
 class Graveyard(db.Model):
@@ -269,5 +270,85 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
 
+    google_calendar_connection = db.relationship(
+        "GoogleCalendarConnection",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
+        lazy="selectin",
+    )
+
     def __repr__(self):
         return f"<User {self.nickname} ({self.email})>"
+
+
+class GoogleCalendarConnection(db.Model):
+    __tablename__ = "google_calendar_connections"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    google_email = db.Column(db.String(255), nullable=True)
+    google_calendar_id = db.Column(db.String(255), nullable=False, default="primary")
+    encrypted_access_token = db.Column(db.Text, nullable=True)
+    encrypted_refresh_token = db.Column(db.Text, nullable=True)
+    token_expiry_utc = db.Column(db.DateTime, nullable=True)
+    sync_token = db.Column(db.Text, nullable=True)
+    sync_status = db.Column(db.String(30), nullable=False, default="disconnected")
+    sync_error = db.Column(db.Text, nullable=True)
+    last_synced_at = db.Column(db.DateTime, nullable=True)
+    calendar_color = db.Column(db.String(32), nullable=False, default="#3b82f6")
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+
+    user = db.relationship("User", back_populates="google_calendar_connection")
+    cached_events = db.relationship(
+        "GoogleCalendarEvent",
+        back_populates="connection",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    def __repr__(self):
+        return f"<GoogleCalendarConnection user_id={self.user_id} status={self.sync_status}>"
+
+
+class GoogleCalendarEvent(db.Model):
+    __tablename__ = "google_calendar_events"
+
+    id = db.Column(db.Integer, primary_key=True)
+    connection_id = db.Column(
+        db.Integer,
+        db.ForeignKey("google_calendar_connections.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    google_event_id = db.Column(db.String(255), nullable=False)
+    i_cal_uid = db.Column(db.String(255), nullable=True)
+    status = db.Column(db.String(30), nullable=False, default="confirmed")
+    summary = db.Column(db.Text, nullable=True)
+    visibility = db.Column(db.String(30), nullable=True)
+    transparency = db.Column(db.String(30), nullable=True)
+    is_all_day = db.Column(db.Boolean, nullable=False, default=False)
+    starts_at_utc = db.Column(db.DateTime, nullable=True)
+    ends_at_utc = db.Column(db.DateTime, nullable=True)
+    start_date = db.Column(db.Date, nullable=True)
+    end_date = db.Column(db.Date, nullable=True)
+    timezone = db.Column(db.String(80), nullable=True)
+    updated_at_google = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+
+    connection = db.relationship("GoogleCalendarConnection", back_populates="cached_events")
+
+    __table_args__ = (
+        db.UniqueConstraint("connection_id", "google_event_id", name="uq_gcal_connection_event"),
+    )
+
+    def __repr__(self):
+        return f"<GoogleCalendarEvent connection_id={self.connection_id} google_event_id={self.google_event_id}>"

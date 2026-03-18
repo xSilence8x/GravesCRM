@@ -40,6 +40,7 @@ export interface Grave {
   graveyard_id: number;
   clients: { full_name: string };
   cemetery_name: string;
+  name_on_grave: string | null;
   grave_number: string;
   latitude: number;
   longitude: number;
@@ -105,7 +106,7 @@ export interface Reminder {
   client_id: number;
   grave_id: number;
   clients: { full_name: string };
-  graves: { cemetery_name: string; grave_number: string; base_price: number; cleaning_frequency: string };
+  graves: { cemetery_name: string; name_on_grave: string | null; grave_number: string; base_price: number; cleaning_frequency: string };
   next_date: string | null;
   status: ReminderStatus;
   created_at: string;

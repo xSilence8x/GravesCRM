@@ -10,6 +10,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { useReminders, useAddReminder } from "@/hooks/useReminders";
 import { useClients } from "@/hooks/useClients";
 import { useGraves } from "@/hooks/useGraves";
+import {
+  GoogleCalendarEvent,
+  useGoogleCalendarDisconnect,
+  useGoogleCalendarEvents,
+  useGoogleCalendarStatus,
+  useGoogleCalendarSync,
+} from "@/hooks/useGoogleCalendar";
 import { AlertTriangle, Clock, CalendarCheck, ChevronLeft, ChevronRight, Plus, CalendarIcon } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -38,16 +45,38 @@ const MONTHS = ["Leden", "Únor", "Březen", "Duben", "Květen", "Červen", "Če
 function getDaysInMonth(y: number, m: number) { return new Date(y, m + 1, 0).getDate(); }
 function getFirstDay(y: number, m: number) { const d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; }
 
+function eachDate(start: string, endExclusive: string): string[] {
+  const dates: string[] = [];
+  const cursor = new Date(`${start}T00:00:00`);
+  const endDate = new Date(`${endExclusive}T00:00:00`);
+
+  while (cursor < endDate) {
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return dates;
+}
+
 export default function RemindersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedReminders, setSelectedReminders] = useState<any[] | null>(null);
+  const [selectedDayData, setSelectedDayData] = useState<{ reminders: any[]; googleEvents: GoogleCalendarEvent[] } | null>(null);
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState({ client_id: "", grave_id: "", next_date: undefined as Date | undefined, status: "upcoming" as ReminderStatus });
 
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+  const rangeStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const rangeEnd = `${year}-${String(month + 2).padStart(2, "0")}-01`;
+
   const { data: reminders = [], isLoading } = useReminders();
   const { data: clients = [] } = useClients();
   const { data: graves = [] } = useGraves();
+  const { data: googleStatus } = useGoogleCalendarStatus();
+  const { data: googleEvents = [] } = useGoogleCalendarEvents(rangeStart, rangeEnd);
+  const syncGoogle = useGoogleCalendarSync();
+  const disconnectGoogle = useGoogleCalendarDisconnect();
   const addReminder = useAddReminder();
 
   const clientGraves = graves.filter((g: any) => g.client_id === form.client_id);
@@ -65,8 +94,19 @@ export default function RemindersPage() {
     remindersByDate.set(r.next_date, existing);
   });
 
-  const year = currentMonth.getFullYear();
-  const month = currentMonth.getMonth();
+  const googleEventsByDate = new Map<string, GoogleCalendarEvent[]>();
+  googleEvents.forEach((event) => {
+    const keys = event.is_all_day && event.start_date && event.end_date
+      ? eachDate(event.start_date, event.end_date)
+      : [event.starts_at?.slice(0, 10)].filter(Boolean) as string[];
+
+    keys.forEach((key) => {
+      const current = googleEventsByDate.get(key) || [];
+      current.push(event);
+      googleEventsByDate.set(key, current);
+    });
+  });
+
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDay(year, month);
   const today = new Date().toISOString().slice(0, 10);
@@ -165,6 +205,57 @@ export default function RemindersPage() {
         </div>
       </div>
 
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">Google kalendář</p>
+              <p className="text-xs text-muted-foreground">
+                {googleStatus?.connected
+                  ? `Připojeno: ${googleStatus.google_email || "Google účet"}`
+                  : "Kalendář není spárovaný"}
+              </p>
+              {googleStatus?.last_synced_at && (
+                <p className="text-xs text-muted-foreground">Poslední synchronizace: {new Date(googleStatus.last_synced_at).toLocaleString("cs-CZ")}</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              {!googleStatus?.connected ? (
+                <Button onClick={() => { window.location.href = "/api/google-calendar/oauth/start"; }}>
+                  Spárovat kalendář
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={() => syncGoogle.mutate()} disabled={syncGoogle.isPending}>
+                    Synchronizovat
+                  </Button>
+                  <Button variant="destructive" onClick={() => disconnectGoogle.mutate()} disabled={disconnectGoogle.isPending}>
+                    Odpojit
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {googleStatus?.team?.length ? (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Legenda týmových kalendářů</p>
+              <div className="flex flex-wrap gap-2">
+                {googleStatus.team.map((member) => (
+                  <div
+                    key={member.user_id}
+                    className="text-xs px-2 py-1 rounded border"
+                    style={{ borderColor: member.color, color: member.color }}
+                  >
+                    {member.nickname}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
       {isLoading ? (
         <Skeleton className="h-[500px] rounded-xl" />
       ) : reminders.length === 0 ? (
@@ -190,28 +281,44 @@ export default function RemindersPage() {
               if (day === null) return <div key={`e-${i}`} className="min-h-[100px] border-r border-b bg-muted/10" />;
               const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
               const dayReminders = remindersByDate.get(dateStr) || [];
+              const dayGoogleEvents = googleEventsByDate.get(dateStr) || [];
               const isToday = dateStr === today;
 
               return (
-                <div key={dateStr} onClick={() => dayReminders.length > 0 && setSelectedReminders(dayReminders)}
-                  className={`min-h-[100px] border-r border-b p-1.5 transition-colors ${dayReminders.length > 0 ? "cursor-pointer hover:bg-accent/30" : ""} ${isToday ? "bg-primary/5" : ""}`}>
+                <div
+                  key={dateStr}
+                  onClick={() => (dayReminders.length > 0 || dayGoogleEvents.length > 0) && setSelectedDayData({ reminders: dayReminders, googleEvents: dayGoogleEvents })}
+                  className={`min-h-[100px] border-r border-b p-1.5 transition-colors ${(dayReminders.length > 0 || dayGoogleEvents.length > 0) ? "cursor-pointer hover:bg-accent/30" : ""} ${isToday ? "bg-primary/5" : ""}`}
+                >
                   <div className={`text-xs font-medium mb-1 ${isToday ? "text-primary font-bold" : "text-muted-foreground"}`}>{day}</div>
                   <div className="space-y-0.5">
-                    {dayReminders.slice(0, 3).map((r: any) => (
+                    {dayReminders.slice(0, 2).map((r: any) => (
                       (() => {
                         const normalizedStatus = normalizeReminderStatus(String(r.status ?? ""));
+                        const graveName = r.graves?.name_on_grave || r.clients?.full_name || "—";
                         return (
                       <div key={r.id} className={`text-[11px] leading-tight px-1.5 py-0.5 rounded truncate ${
                         normalizedStatus === "overdue" ? "bg-destructive/10 text-destructive" :
                         normalizedStatus === "due-soon" ? "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]" :
                         "bg-primary/10 text-primary"
                       }`}>
-                        {r.clients?.full_name ?? "—"}
+                        {graveName}
                       </div>
                         );
                       })()
                     ))}
-                    {dayReminders.length > 3 && <div className="text-[10px] text-muted-foreground px-1.5">+{dayReminders.length - 3} dalších</div>}
+                    {dayGoogleEvents.slice(0, 2).map((gEvent) => (
+                      <div
+                        key={`${gEvent.user_id}-${gEvent.id}`}
+                        className="text-[11px] leading-tight px-1.5 py-0.5 rounded truncate border"
+                        style={{ borderColor: gEvent.user_color, color: gEvent.user_color, backgroundColor: `${gEvent.user_color}22` }}
+                      >
+                        {gEvent.summary}
+                      </div>
+                    ))}
+                    {(dayReminders.length + dayGoogleEvents.length) > 4 && (
+                      <div className="text-[10px] text-muted-foreground px-1.5">+{dayReminders.length + dayGoogleEvents.length - 4} dalších</div>
+                    )}
                   </div>
                 </div>
               );
@@ -220,11 +327,11 @@ export default function RemindersPage() {
         </Card>
       )}
 
-      <Dialog open={!!selectedReminders} onOpenChange={(open) => !open && setSelectedReminders(null)}>
+      <Dialog open={!!selectedDayData} onOpenChange={(open) => !open && setSelectedDayData(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader><DialogTitle>Detail připomínek</DialogTitle></DialogHeader>
           <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-            {selectedReminders?.map((r: any) => {
+            {selectedDayData?.reminders.map((r: any) => {
               const config = statusConfig[normalizeReminderStatus(String(r.status ?? ""))];
               const Icon = config.icon;
               return (
@@ -235,7 +342,7 @@ export default function RemindersPage() {
                         <Icon className={`h-4 w-4 ${config.text}`} />
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-semibold">{r.clients?.full_name ?? "—"}</p>
+                        <p className="text-sm font-semibold">{r.graves?.name_on_grave || r.clients?.full_name || "—"}</p>
                         <p className="text-sm text-muted-foreground">{r.graves?.cemetery_name} / #{r.graves?.grave_number}</p>
                         <div className="flex items-center gap-2 mt-2">
                           <span className="text-xs text-muted-foreground">{r.next_date}</span>
@@ -252,6 +359,20 @@ export default function RemindersPage() {
                 </Card>
               );
             })}
+
+            {selectedDayData?.googleEvents.map((event) => (
+              <Card key={`${event.user_id}-${event.id}`}>
+                <CardContent className="p-4">
+                  <p className="text-sm font-semibold" style={{ color: event.user_color }}>{event.summary}</p>
+                  <p className="text-xs text-muted-foreground">{event.user_nickname}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {event.is_all_day
+                      ? `Celý den (${event.start_date})`
+                      : `${event.starts_at ? new Date(event.starts_at).toLocaleString("cs-CZ") : ""} – ${event.ends_at ? new Date(event.ends_at).toLocaleString("cs-CZ") : ""}`}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </DialogContent>
       </Dialog>

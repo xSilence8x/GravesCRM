@@ -21,13 +21,13 @@ interface EditGraveDialogProps {
 export function EditGraveDialog({ grave, clients, graveyards, open, onOpenChange, onSave }: EditGraveDialogProps) {
   const [form, setForm] = useState({
     client_id: "", graveyard_id: "", grave_number: "", latitude: "", longitude: "",
-    cleaning_frequency: "2x" as "1x" | "2x" | "4x" | "custom", base_price: "", notes: "",
+    name_on_grave: "", cleaning_frequency: "2x" as "1x" | "2x" | "4x" | "custom", base_price: "", notes: "",
   });
 
   useEffect(() => {
     if (grave) {
       setForm({
-        client_id: String(grave.client_id), graveyard_id: String(grave.graveyard_id), grave_number: grave.grave_number,
+        client_id: String(grave.client_id), graveyard_id: String(grave.graveyard_id), name_on_grave: grave.name_on_grave || "", grave_number: grave.grave_number,
         latitude: String(grave.latitude), longitude: String(grave.longitude),
         cleaning_frequency: grave.cleaning_frequency, base_price: String(grave.base_price), notes: grave.notes,
       });
@@ -41,7 +41,7 @@ export function EditGraveDialog({ grave, clients, graveyards, open, onOpenChange
       return;
     }
     onSave({
-      id: grave!.id, client_id: Number(form.client_id), graveyard_id: Number(form.graveyard_id), grave_number: form.grave_number,
+      id: grave!.id, client_id: Number(form.client_id), graveyard_id: Number(form.graveyard_id), name_on_grave: form.name_on_grave || null, grave_number: form.grave_number,
       latitude: parseFloat(form.latitude) || 50.0755, longitude: parseFloat(form.longitude) || 14.4378,
       cleaning_frequency: form.cleaning_frequency, base_price: parseFloat(form.base_price) || 0, notes: form.notes,
     });
@@ -68,6 +68,7 @@ export function EditGraveDialog({ grave, clients, graveyards, open, onOpenChange
                 <SelectContent>{graveyards.map((g) => <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            <div className="space-y-1"><Label>Jméno na hrobě</Label><Input value={form.name_on_grave} onChange={(e) => setForm((f) => ({ ...f, name_on_grave: e.target.value }))} /></div>
             <div className="space-y-1"><Label>Číslo hrobu *</Label><Input value={form.grave_number} onChange={(e) => setForm((f) => ({ ...f, grave_number: e.target.value }))} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">

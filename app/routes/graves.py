@@ -18,6 +18,7 @@ def grave_to_dict(g):
         "clients": {"full_name": client_name},
         "graveyard": {"name": cemetery_name},
         "cemetery_name": cemetery_name,
+        "name_on_grave": g.name_on_grave,
         "grave_number": g.grave_number,
         "latitude": g.latitude,
         "longitude": g.longitude,
@@ -59,6 +60,7 @@ def create_grave():
     g = Grave(
         client_id=int(data["client_id"]),
         graveyard_id=int(graveyard_id),
+        name_on_grave=data.get("name_on_grave"),
         grave_number=data["grave_number"],
         latitude=data.get("latitude", 49.170529),
         longitude=data.get("longitude", 16.594459),
@@ -80,7 +82,7 @@ def update_grave(grave_id):
     if "graveyard_id" in data:
         g.graveyard_id = int(data["graveyard_id"])
 
-    for field in ["client_id", "grave_number", "latitude", "longitude",
+    for field in ["client_id", "name_on_grave", "grave_number", "latitude", "longitude",
                   "cleaning_frequency", "custom_frequency_months", "base_price", "notes"]:
         if field in data:
             setattr(g, field, data[field])

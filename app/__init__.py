@@ -7,6 +7,7 @@ from app.routes.auth import auth_bp
 from app.routes.clients import clients_bp
 from app.routes.graveyards import graveyards_bp
 from app.routes.graves import graves_bp
+from app.routes.google_calendar import google_calendar_bp
 from app.routes.invoices import invoices_bp
 from app.routes.orders import orders_bp
 from app.routes.reminders import reminders_bp
@@ -34,12 +35,14 @@ def create_app():
     from app.routes.auth import auth_bp
     from app.routes.clients import clients_bp
     from app.routes.graveyards import graveyards_bp
+    from app.routes.google_calendar import google_calendar_bp
 
     # API blueprints
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(clients_bp, url_prefix="/api/clients")
     app.register_blueprint(graveyards_bp, url_prefix="/api/graveyards")
     app.register_blueprint(graves_bp, url_prefix="/api/graves")
+    app.register_blueprint(google_calendar_bp, url_prefix="/api/google-calendar")
     app.register_blueprint(orders_bp, url_prefix="/api/orders")
     app.register_blueprint(invoices_bp, url_prefix="/api/invoices")
     app.register_blueprint(reminders_bp, url_prefix="/api/reminders")

@@ -28,7 +28,7 @@ export default function GravesPage() {
   const deleteGrave = useDeleteGrave();
 
   const [form, setForm] = useState({
-    client_id: "", graveyard_id: "", grave_number: "", latitude: "50.0755", longitude: "14.4378",
+    client_id: "", graveyard_id: "", name_on_grave: "", grave_number: "", latitude: "50.0755", longitude: "14.4378",
     cleaning_frequency: "2x" as "1x" | "2x" | "4x" | "custom", base_price: "", notes: "",
   });
 
@@ -51,14 +51,14 @@ export default function GravesPage() {
     }
     addGrave.mutate(
       {
-        client_id: Number(form.client_id), graveyard_id: Number(form.graveyard_id), grave_number: form.grave_number,
+        client_id: Number(form.client_id), graveyard_id: Number(form.graveyard_id), name_on_grave: form.name_on_grave || null, grave_number: form.grave_number,
         latitude: parseFloat(form.latitude) || 50.0755, longitude: parseFloat(form.longitude) || 14.4378,
         cleaning_frequency: form.cleaning_frequency, base_price: parseFloat(form.base_price) || 0, notes: form.notes,
       },
       {
         onSuccess: () => {
           setOpen(false);
-          setForm({ client_id: "", graveyard_id: "", grave_number: "", latitude: "50.0755", longitude: "14.4378", cleaning_frequency: "2x", base_price: "", notes: "" });
+          setForm({ client_id: "", graveyard_id: "", name_on_grave: "", grave_number: "", latitude: "50.0755", longitude: "14.4378", cleaning_frequency: "2x", base_price: "", notes: "" });
           toast({ title: "Hrob přidán" });
         },
         onError: (e) => toast({ title: "Chyba", description: e.message, variant: "destructive" }),
@@ -89,6 +89,7 @@ export default function GravesPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="page-title">Hroby</h1>
+                  <div className="space-y-1"><Label>Jméno na hrobě</Label><Input value={form.name_on_grave} onChange={(e) => setForm((f) => ({ ...f, name_on_grave: e.target.value }))} /></div>
             <p className="page-description">Správa hrobových záznamů a umístění</p>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
@@ -188,6 +189,7 @@ export default function GravesPage() {
               </CardHeader>
               <CardContent className="space-y-1 text-sm">
                 <p className="text-muted-foreground">Klient: {getClientName(grave)}</p>
+                {grave.name_on_grave && <p className="text-muted-foreground">Jméno na hrobě: {grave.name_on_grave}</p>}
                 <p className="font-medium">{Number(grave.base_price).toLocaleString()} Kč</p>
                 {grave.notes && <p className="text-xs italic text-muted-foreground">{grave.notes}</p>}
               </CardContent>
