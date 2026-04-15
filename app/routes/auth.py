@@ -6,6 +6,14 @@ from app.models import User
  
 auth_bp = Blueprint("auth", __name__)
 
+@auth_bp.route("/config", methods=["GET"])
+def get_config():
+    """Vrátit konfiguraci registrace pro frontend"""
+    return jsonify({
+        "registration_enabled": current_app.config.get("REGISTRATION_ENABLED", True),
+        "environment": current_app.config.get("ENVIRONMENT", "development")
+    })
+
 @auth_bp.route("/register", methods=["POST"])
 def register():
     if not current_app.config["REGISTRATION_ENABLED"]:
