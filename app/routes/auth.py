@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_user, logout_user, login_required, current_user
 from app.extensions import db
@@ -8,6 +8,11 @@ auth_bp = Blueprint("auth", __name__)
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
+    if not current_app.config["REGISTRATION_ENABLED"]:
+        return jsonify(
+            {"error": "Registrace je momentálně zakázána."}
+        ), 403
+    
     data = request.get_json()
     email = data.get("email", "").strip().lower()
     password = data.get("password", "")
