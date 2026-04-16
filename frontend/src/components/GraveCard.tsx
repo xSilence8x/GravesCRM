@@ -8,10 +8,10 @@ import { useDeleteGrave } from "@/hooks/useGraves";
 import { cn } from "@/lib/utils";
 
 const statusStyles: Record<string, string> = {
-  plánováno: "bg-blue-100 text-blue-800",
-  probíhá: "bg-yellow-100 text-yellow-800",
-  dokončeno: "bg-green-100 text-green-800",
-  zrušeno: "bg-red-100 text-red-800",
+  plánováno: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 hover:text-yellow-900 transition-colors cursor-pointer",
+  probíhá: "bg-blue-100 text-blue-800 hover:bg-blue-200 hover:text-blue-900 transition-colors cursor-pointer",
+  dokončeno: "bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-900 transition-colors cursor-pointer",
+  zrušeno: "bg-red-100 text-red-800 hover:bg-red-200 hover:text-red-900 transition-colors cursor-pointer",
 };
 
 const statusLabels: Record<string, string> = {

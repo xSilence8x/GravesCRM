@@ -296,32 +296,34 @@ export default function GravesPage() {
         />
       </div>
 
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-40 rounded-xl" />
-          ))}
-        </div>
-      ) : filtered.length > 0 ? (
-        <div className="space-y-3">
-          {filtered.map((grave: any) => (
-            <GraveCard
-              key={grave.id}
-              grave={grave}
-              onEdit={() => setEditGrave(grave)}
-              onDeleteSuccess={() => {}}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-12 text-muted-foreground">
-          <p>
-            {graves.length === 0
-              ? "Zatím žádné hroby. Přidejte první hrob!"
-              : "Nebyly nalezeny žádné hroby odpovídající kritériím."}
-          </p>
-        </div>
-      )}
+      <div className="w-full max-w-[75%]">
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-40 rounded-xl" />
+            ))}
+          </div>
+        ) : filtered.length > 0 ? (
+          <div className="space-y-3">
+            {filtered.map((grave: any) => (
+              <GraveCard
+                key={grave.id}
+                grave={grave}
+                onEdit={() => setEditGrave(grave)}
+                onDeleteSuccess={() => {}}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            <p>
+              {graves.length === 0
+                ? "Zatím žádné hroby. Přidejte první hrob!"
+                : "Nebyly nalezeny žádné hroby odpovídající kritériím."}
+            </p>
+          </div>
+        )}
+      </div>
 
       <EditGraveDialog
         grave={editGrave}

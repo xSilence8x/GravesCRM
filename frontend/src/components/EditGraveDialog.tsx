@@ -27,10 +27,18 @@ interface EditGraveDialogProps {
   onSave: (data: any) => void;
 }
 
+const statusOptions = [
+  { value: "plánováno", label: "Plánováno", color: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 hover:text-yellow-900" },
+  { value: "probíhá", label: "Probíhá", color: "bg-blue-100 text-blue-800 hover:bg-blue-200 hover:text-blue-900" },
+  { value: "dokončeno", label: "Dokončeno", color: "bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-900" },
+  { value: "zrušeno", label: "Zrušeno", color: "bg-red-100 text-red-800 hover:bg-red-200 hover:text-red-900" },
+];
+
 export function EditGraveDialog({ grave, clients, graveyards, open, onOpenChange, onSave }: EditGraveDialogProps) {
   const [form, setForm] = useState({
     client_id: "", graveyard_id: "", grave_number: "", latitude: "", longitude: "",
     name_on_grave: "", cleaning_frequency: "2x" as "1x" | "2x" | "4x" | "custom", base_price: "", notes: "",
+    status: "plánováno" as "plánováno" | "probíhá" | "dokončeno" | "zrušeno",
   });
   const [reminderDates, setReminderDates] = useState<ReminderDate[]>([]);
   const bulkAddReminders = useBulkAddReminders();
@@ -78,6 +86,7 @@ export function EditGraveDialog({ grave, clients, graveyards, open, onOpenChange
             cleaning_frequency: freshGraveData.cleaning_frequency,
             base_price: String(freshGraveData.base_price),
             notes: freshGraveData.notes,
+            status: freshGraveData.status || "plánováno",
           });
           
           // Load existing reminders from fresh data
@@ -105,6 +114,7 @@ export function EditGraveDialog({ grave, clients, graveyards, open, onOpenChange
             cleaning_frequency: grave.cleaning_frequency,
             base_price: String(grave.base_price),
             notes: grave.notes,
+            status: grave.status || "plánováno",
           });
           setReminderDates([]);
         }
@@ -125,6 +135,7 @@ export function EditGraveDialog({ grave, clients, graveyards, open, onOpenChange
       id: grave!.id, client_id: Number(form.client_id), graveyard_id: Number(form.graveyard_id), name_on_grave: form.name_on_grave || null, grave_number: form.grave_number,
       latitude: parseFloat(form.latitude) || 50.0755, longitude: parseFloat(form.longitude) || 14.4378,
       cleaning_frequency: form.cleaning_frequency, base_price: parseFloat(form.base_price) || 0, notes: form.notes,
+      status: form.status,
     };
 
     onSave(graveData);
@@ -253,6 +264,22 @@ export function EditGraveDialog({ grave, clients, graveyards, open, onOpenChange
               </Select>
             </div>
             <div className="space-y-1"><Label>Základní cena (Kč)</Label><Input type="number" value={form.base_price} onChange={(e) => setForm((f) => ({ ...f, base_price: e.target.value }))} /></div>
+          </div>
+
+          <div className="space-y-1">
+            <Label>Stav hrobu</Label>
+            <Select value={form.status} onValueChange={(v: any) => setForm((f) => ({ ...f, status: v }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {statusOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <div className="flex items-center gap-2">
+                      <div className={`px-2 py-1 rounded text-xs font-medium transition-colors ${option.color}`}>{option.label}</div>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <ReminderDateFields
