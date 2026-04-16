@@ -56,16 +56,16 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-base md:text-xs">Navigace</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sm md:text-xs">Navigace</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                <SidebarMenuItem key={item.title} className="py-1 md:py-0">
+                  <SidebarMenuButton asChild className="py-2 md:py-2 px-3 md:px-2 h-auto md:h-auto">
                     <NavLink
                       to={item.url}
                       end={item.url === "/"}
-                      className="hover:bg-sidebar-accent/50"
+                      className="hover:bg-sidebar-accent/50 flex items-center"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                       onClick={() => {
                         if (isMobile) {
@@ -73,8 +73,8 @@ export function AppSidebar() {
                         }
                       }}
                     >
-                      <item.icon className="mr-2 h-5 w-5 md:h-4 md:w-4" />
-                      {!collapsed && <span className="text-base md:text-sm">{item.title}</span>}
+                      <item.icon className="mr-2 h-6 w-6 md:h-4 md:w-4" />
+                      {!collapsed && <span className="text-lg md:text-sm">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

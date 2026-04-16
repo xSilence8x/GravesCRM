@@ -43,7 +43,7 @@ export function EditGraveDialog({ grave, clients, graveyards, open, onOpenChange
         try {
           await queryClient.refetchQueries({ queryKey: ["graves"] });
         } catch (error) {
-          console.error("Error refetching graves:", error);
+          // Silently fail - will use fallback
         }
       }
     };
@@ -55,7 +55,6 @@ export function EditGraveDialog({ grave, clients, graveyards, open, onOpenChange
       // Fetch fresh grave data from API to get latest reminders
       const fetchGraveData = async () => {
         try {
-          console.log("EditGraveDialog - Fetching grave data for ID:", grave.id);
           const response = await fetch(`/api/graves/${grave.id}`, {
             credentials: "include",
             headers: {
@@ -64,14 +63,10 @@ export function EditGraveDialog({ grave, clients, graveyards, open, onOpenChange
           });
           
           if (!response.ok) {
-            console.error("API responded with status:", response.status);
             throw new Error(`Failed to fetch grave: ${response.status}`);
           }
           
           const freshGraveData = await response.json();
-          
-          console.log("EditGraveDialog - fresh grave data:", freshGraveData);
-          console.log("EditGraveDialog - fresh grave reminders:", freshGraveData.reminders);
           
           setForm({
             client_id: String(freshGraveData.client_id),
@@ -94,14 +89,11 @@ export function EditGraveDialog({ grave, clients, graveyards, open, onOpenChange
                 date: reminder.next_date || "",
                 isExisting: true,
               }));
-            console.log("EditGraveDialog - loaded reminders from fresh data:", loadedReminders);
             setReminderDates(loadedReminders);
           } else {
-            console.log("EditGraveDialog - no reminders in fresh data");
             setReminderDates([]);
           }
         } catch (error) {
-          console.error("Error fetching fresh grave data:", error);
           // Fallback to using the prop grave data if API fetch fails
           setForm({
             client_id: String(grave.client_id),
@@ -158,15 +150,11 @@ export function EditGraveDialog({ grave, clients, graveyards, open, onOpenChange
           });
           if (response.ok) {
             updateCount++;
-            console.log(`✓ Updated reminder ${reminderId} to ${reminder.date}`);
           } else {
-            const errorData = await response.text();
             errors.push(`Reminder ${reminderId}: ${response.status}`);
-            console.error(`✗ Failed to update reminder ${reminderId}: ${response.status}`, errorData);
           }
         } catch (error: any) {
           errors.push(`Reminder ${reminderId}: ${error.message}`);
-          console.error(`✗ Error updating reminder ${reminderId}:`, error);
         }
       }
     }
@@ -190,15 +178,11 @@ export function EditGraveDialog({ grave, clients, graveyards, open, onOpenChange
 
         if (response.ok) {
           createCount = newReminders.length;
-          console.log(`✓ Created ${createCount} new reminders`);
         } else {
-          const errorData = await response.text();
           errors.push(`Bulk create: ${response.status}`);
-          console.error(`✗ Failed to create reminders: ${response.status}`, errorData);
         }
       } catch (error: any) {
         errors.push(`Bulk create: ${error.message}`);
-        console.error("✗ Error creating reminders:", error);
       }
     }
 

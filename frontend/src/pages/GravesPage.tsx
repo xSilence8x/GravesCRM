@@ -29,8 +29,6 @@ export default function GravesPage() {
   const [editGrave, setEditGrave] = useState<any | null>(null);
   const [reminderDates, setReminderDates] = useState<ReminderDate[]>([]);
   const { data: graves = [], isLoading } = useGraves();
-  
-  console.log("GravesPage - graves loaded:", graves.length, graves.length > 0 ? graves[1] : null);
   const { data: clients = [] } = useClients();
   const { data: graveyards = [] } = useGraveyards();
   const addGrave = useAddGrave();
