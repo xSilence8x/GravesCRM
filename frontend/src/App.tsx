@@ -10,7 +10,6 @@ import Dashboard from "@/pages/Dashboard";
 import ClientsPage from "@/pages/ClientsPage";
 import GraveyardsPage from "@/pages/GraveyardsPage";
 import GravesPage from "@/pages/GravesPage";
-import OrdersPage from "@/pages/OrdersPage";
 import InvoicesPage from "@/pages/InvoicesPage";
 import MapPage from "@/pages/MapPage";
 import RemindersPage from "@/pages/RemindersPage";
@@ -43,7 +42,6 @@ function ProtectedRoutes() {
         <Route path="/clients" element={<ClientsPage />} />
         <Route path="/graveyards" element={<GraveyardsPage />} />
         <Route path="/graves" element={<GravesPage />} />
-        <Route path="/orders" element={<OrdersPage />} />
         <Route path="/invoices" element={<InvoicesPage />} />
         <Route path="/map" element={<MapPage />} />
         <Route path="/reminders" element={<RemindersPage />} />

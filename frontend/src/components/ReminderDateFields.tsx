@@ -10,7 +10,7 @@ interface ReminderDate {
 }
 
 interface ReminderDateFieldsProps {
-  cleaningFrequency: "1x" | "2x" | "4x" | "custom";
+  cleaningFrequency: "1x" | "2x" | "4x" | "vlastní" | "custom";
   value: ReminderDate[];
   onChange: (dates: ReminderDate[]) => void;
 }
@@ -31,7 +31,7 @@ export function ReminderDateFields({
 
   // Synchronizuj se s parentem a frequency
   useEffect(() => {
-    if (cleaningFrequency !== "custom") {
+    if (cleaningFrequency !== "custom" && cleaningFrequency !== "vlastní") {
       const newCount = FREQUENCY_COUNT[cleaningFrequency] || 0;
       const updatedDates = [...value];
 
@@ -113,9 +113,14 @@ export function ReminderDateFields({
           {dates.map((reminder, index) => (
             <div key={reminder.id} className="flex items-end gap-2">
               <div className="flex-1 space-y-1">
-                <Label htmlFor={`reminder-${reminder.id}`} className="text-xs text-muted-foreground">
-                  Datum {index + 1}
-                </Label>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor={`reminder-${reminder.id}`} className="text-xs text-muted-foreground">
+                    Datum {index + 1}
+                  </Label>
+                  {requiredCount > 0 && (
+                    <span className="text-xs font-semibold text-primary">({index + 1}/{requiredCount})</span>
+                  )}
+                </div>
                 <Input
                   id={`reminder-${reminder.id}`}
                   type="date"

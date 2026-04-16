@@ -72,7 +72,12 @@ export default function Dashboard() {
                   <span className="font-medium">{r.clients?.full_name}</span>
                   <span className="text-muted-foreground ml-2">{r.graves?.cemetery_name} #{r.graves?.grave_number}</span>
                 </div>
-                <Badge className="status-overdue border-0 text-xs">{r.next_date}</Badge>
+                <div className="flex items-center gap-2">
+                  {r.cleaning_sequence && r.cleaning_total && (
+                    <span className="text-xs font-semibold text-muted-foreground">({r.cleaning_sequence}/{r.cleaning_total})</span>
+                  )}
+                  <Badge className="status-overdue border-0 text-xs">{r.next_date}</Badge>
+                </div>
               </div>
             ))}
           </CardContent>
@@ -89,7 +94,12 @@ export default function Dashboard() {
                   <span className="font-medium">{r.clients?.full_name}</span>
                   <span className="text-muted-foreground ml-2">{r.graves?.cemetery_name} #{r.graves?.grave_number}</span>
                 </div>
-                <Badge className="status-due-soon border-0 text-xs">{r.next_date}</Badge>
+                <div className="flex items-center gap-2">
+                  {r.cleaning_sequence && r.cleaning_total && (
+                    <span className="text-xs font-semibold text-muted-foreground">({r.cleaning_sequence}/{r.cleaning_total})</span>
+                  )}
+                  <Badge className="status-due-soon border-0 text-xs">{r.next_date}</Badge>
+                </div>
               </div>
             ))}
           </CardContent>

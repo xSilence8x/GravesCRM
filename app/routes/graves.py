@@ -1,9 +1,26 @@
+import os
 from flask import Blueprint, request, jsonify
 from flask_login import login_required
+from werkzeug.utils import secure_filename
 from app.extensions import db
-from app.models import Grave, Graveyard
+from app.models import Grave, Graveyard, Photo, AdditionalService
 
 graves_bp = Blueprint("graves", __name__)
+
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "..", "static", "uploads")
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def photo_to_dict(p):
+    return {"id": p.id, "grave_id": p.grave_id, "url": p.url, "type": p.photo_type, "note": p.note or ""}
+
+
+def service_to_dict(s):
+    return {"id": s.id, "grave_id": s.grave_id, "name": s.name, "price": float(s.price), "note": s.note or ""}
 
 
 def grave_to_dict(g):
@@ -24,6 +41,12 @@ def grave_to_dict(g):
             for r in g.reminders
         ]
     
+    # Načti fotky
+    photos = [photo_to_dict(p) for p in g.photos] if g.photos else []
+    
+    # Načti additional_services
+    services = [service_to_dict(s) for s in g.additional_services] if g.additional_services else []
+    
     return {
         "id": g.id,
         "client_id": g.client_id,
@@ -39,6 +62,10 @@ def grave_to_dict(g):
         "custom_frequency_months": g.custom_frequency_months,
         "base_price": float(g.base_price),
         "notes": g.notes or "",
+        "status": g.status,
+        "completion_date": g.completion_date.isoformat() if g.completion_date else None,
+        "photos": photos,
+        "additional_services": services,
         "reminders": reminders,
         "created_at": g.created_at.isoformat(),
     }
@@ -93,13 +120,21 @@ def create_grave():
 def update_grave(grave_id):
     g = Grave.query.get_or_404(grave_id)
     data = request.get_json()
+    
     if "graveyard_id" in data:
         g.graveyard_id = int(data["graveyard_id"])
 
     for field in ["client_id", "name_on_grave", "grave_number", "latitude", "longitude",
-                  "cleaning_frequency", "custom_frequency_months", "base_price", "notes"]:
+                  "cleaning_frequency", "custom_frequency_months", "base_price", "notes", "status"]:
         if field in data:
             setattr(g, field, data[field])
+    
+    # Aktualizuj completion_date pokud je status "dokončeno"
+    if "completion_date" in data:
+        from datetime import date
+        val = data["completion_date"]
+        g.completion_date = date.fromisoformat(val) if val else None
+    
     db.session.commit()
     return jsonify(grave_to_dict(g))
 
@@ -109,5 +144,88 @@ def update_grave(grave_id):
 def delete_grave(grave_id):
     g = Grave.query.get_or_404(grave_id)
     db.session.delete(g)
+    db.session.commit()
+    return jsonify({"message": "Deleted."})
+
+
+# ── Photo Management ───────────────────────────────────────────────────────
+
+@graves_bp.route("/<int:grave_id>/photos", methods=["POST"])
+@login_required
+def upload_photo(grave_id):
+    g = Grave.query.get_or_404(grave_id)
+    
+    if "file" not in request.files:
+        return jsonify({"error": "Soubor chybí."}), 400
+    
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "Soubor nebyl vybrán."}), 400
+    
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Nepodporovaný formát souboru."}), 400
+    
+    # Vytvoř upload folder pokud neexistuje
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    
+    # Uloži soubor se zabezpečeným jménem
+    filename = secure_filename(file.filename)
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(filepath)
+    
+    # Vytvoř Photo záznam v DB
+    photo = Photo(
+        grave_id=grave_id,
+        url=f"/static/uploads/{filename}",
+        photo_type=request.form.get("photo_type", "před"),
+        note=request.form.get("note", ""),
+    )
+    db.session.add(photo)
+    db.session.commit()
+    
+    return jsonify(photo_to_dict(photo)), 201
+
+
+@graves_bp.route("/photos/<int:photo_id>", methods=["DELETE"])
+@login_required
+def delete_photo(photo_id):
+    photo = Photo.query.get_or_404(photo_id)
+    
+    # Smaž fyzický soubor
+    try:
+        filepath = os.path.join(os.path.dirname(__file__), "..", "static", "uploads", os.path.basename(photo.url))
+        if os.path.exists(filepath):
+            os.remove(filepath)
+    except Exception as e:
+        print(f"Chyba při smazání souboru: {e}")
+    
+    db.session.delete(photo)
+    db.session.commit()
+    return jsonify({"message": "Deleted."})
+
+
+# ── Additional Services ────────────────────────────────────────────────────
+
+@graves_bp.route("/<int:grave_id>/services", methods=["POST"])
+@login_required
+def add_service(grave_id):
+    Grave.query.get_or_404(grave_id)
+    data = request.get_json()
+    s = AdditionalService(
+        grave_id=grave_id,
+        name=data["name"],
+        price=data.get("price", 0),
+        note=data.get("note", ""),
+    )
+    db.session.add(s)
+    db.session.commit()
+    return jsonify(service_to_dict(s)), 201
+
+
+@graves_bp.route("/services/<int:service_id>", methods=["DELETE"])
+@login_required
+def delete_service(service_id):
+    service = AdditionalService.query.get_or_404(service_id)
+    db.session.delete(service)
     db.session.commit()
     return jsonify({"message": "Deleted."})

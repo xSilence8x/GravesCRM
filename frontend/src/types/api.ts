@@ -1,10 +1,10 @@
 // Central type definitions matching the Flask/PostgreSQL backend models.
 // These replace the auto-generated Supabase types.
 
-export type CleaningFrequency = "1x" | "2x" | "4x" | "custom";
-export type OrderStatus = "planned" | "in-progress" | "completed" | "cancelled";
-export type PhotoType = "before" | "after";
-export type ReminderStatus = "upcoming" | "due-soon" | "overdue";
+export type CleaningFrequency = "1x" | "2x" | "4x" | "vlastní";
+export type GraveStatus = "plánováno" | "probíhá" | "dokončeno" | "zrušeno";
+export type PhotoType = "před" | "po";
+export type ReminderStatus = "nadcházející" | "brzy" | "po termínu" | "deaktivovaný";
 
 export interface AuthUser {
   id: number;
@@ -48,6 +48,10 @@ export interface Grave {
   custom_frequency_months: number | null;
   base_price: number;
   notes: string;
+  status: GraveStatus;
+  completion_date: string | null;
+  photos: Photo[];
+  additional_services: AdditionalService[];
   reminders?: Array<{
     id: number;
     next_date: string;
@@ -58,7 +62,7 @@ export interface Grave {
 
 export interface AdditionalService {
   id: number;
-  order_id: number;
+  grave_id: number;
   name: string;
   price: number;
   note: string;
@@ -66,7 +70,7 @@ export interface AdditionalService {
 
 export interface Photo {
   id: number;
-  order_id: number;
+  grave_id: number;
   url: string;
   type: PhotoType;
   note: string;
@@ -82,7 +86,7 @@ export interface MaintenanceOrder {
   completion_date: string | null;
   total_price: number;
   notes: string;
-  status: OrderStatus;
+  status: GraveStatus;
   additional_services: AdditionalService[];
   photos: Photo[];
   created_at: string;
@@ -90,17 +94,20 @@ export interface MaintenanceOrder {
 
 export interface Invoice {
   id: number;
-  order_id: number;
+  grave_id: number;
   invoice_number: string;
   issue_date: string | null;
   due_date: string | null;
   total_price: number;
   notes: string;
-  maintenance_orders: {
+  grave: {
     id: number;
-    total_price: number;
+    base_price: number;
+    status: GraveStatus;
     clients: { full_name: string; billing_address: string; email: string; phone: string };
-    graves: { cemetery_name: string; grave_number: string };
+    graveyard: { name: string };
+    grave_number: string;
+    name_on_grave: string | null;
     additional_services: AdditionalService[];
   } | null;
   created_at: string;
@@ -114,5 +121,7 @@ export interface Reminder {
   graves: { cemetery_name: string; name_on_grave: string | null; grave_number: string; base_price: number; cleaning_frequency: string };
   next_date: string | null;
   status: ReminderStatus;
+  cleaning_sequence: number | null;
+  cleaning_total: number | null;
   created_at: string;
 }

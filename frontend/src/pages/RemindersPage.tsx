@@ -296,13 +296,15 @@ export default function RemindersPage() {
                       (() => {
                         const normalizedStatus = normalizeReminderStatus(String(r.status ?? ""));
                         const graveName = r.graves?.name_on_grave || r.clients?.full_name || "—";
+                        const sequence = r.cleaning_sequence && r.cleaning_total ? `${r.cleaning_sequence}/${r.cleaning_total}` : "";
                         return (
-                      <div key={r.id} className={`text-[11px] leading-tight px-1.5 py-0.5 rounded truncate ${
+                      <div key={r.id} className={`text-[11px] leading-tight px-1.5 py-0.5 rounded truncate flex items-center gap-1 ${
                         normalizedStatus === "overdue" ? "bg-destructive/10 text-destructive" :
                         normalizedStatus === "due-soon" ? "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]" :
                         "bg-primary/10 text-primary"
                       }`}>
-                        {graveName}
+                        <span>{graveName}</span>
+                        {sequence && <span className="font-semibold">({sequence})</span>}
                       </div>
                         );
                       })()
@@ -334,6 +336,7 @@ export default function RemindersPage() {
             {selectedDayData?.reminders.map((r: any) => {
               const config = statusConfig[normalizeReminderStatus(String(r.status ?? ""))];
               const Icon = config.icon;
+              const sequence = r.cleaning_sequence && r.cleaning_total ? `${r.cleaning_sequence}/${r.cleaning_total}` : "";
               return (
                 <Card key={r.id}>
                   <CardContent className="p-4">
@@ -344,9 +347,10 @@ export default function RemindersPage() {
                       <div className="flex-1">
                         <p className="text-sm font-semibold">{r.graves?.name_on_grave || r.clients?.full_name || "—"}</p>
                         <p className="text-sm text-muted-foreground">{r.graves?.cemetery_name} / #{r.graves?.grave_number}</p>
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
                           <span className="text-xs text-muted-foreground">{r.next_date}</span>
                           <Badge className={`${config.className} border-0 text-xs`}>{config.label}</Badge>
+                          {sequence && <Badge variant="outline" className="text-xs font-semibold">{sequence} úklid</Badge>}
                         </div>
                         {r.graves && (
                           <p className="text-xs text-muted-foreground mt-1">

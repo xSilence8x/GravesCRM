@@ -22,6 +22,22 @@ def reminder_to_dict(r):
             "base_price": float(r.grave.base_price),
             "cleaning_frequency": r.grave.cleaning_frequency,
         }
+    
+    # Calculate cleaning sequence for this reminder
+    cleaning_sequence = None
+    cleaning_total = None
+    if r.grave:
+        frequency_map = {"1x": 1, "2x": 2, "4x": 4}
+        cleaning_total = frequency_map.get(r.grave.cleaning_frequency, r.grave.custom_frequency_months or 0)
+        
+        # Get all reminders for this grave, sorted by date
+        all_reminders = Reminder.query.filter_by(grave_id=r.grave_id).order_by(Reminder.next_date.asc()).all()
+        # Find position of current reminder
+        for idx, reminder in enumerate(all_reminders, 1):
+            if reminder.id == r.id:
+                cleaning_sequence = idx
+                break
+    
     return {
         "id": r.id,
         "client_id": r.client_id,
@@ -30,6 +46,8 @@ def reminder_to_dict(r):
         "graves": grave_data,
         "next_date": r.next_date.isoformat() if r.next_date else None,
         "status": r.status,
+        "cleaning_sequence": cleaning_sequence,
+        "cleaning_total": cleaning_total,
         "created_at": r.created_at.isoformat(),
     }
 
