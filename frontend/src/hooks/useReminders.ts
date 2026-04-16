@@ -26,6 +26,15 @@ export function useAddReminder() {
   });
 }
 
+export function useBulkAddReminders() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (reminders: Array<Pick<Reminder, "client_id" | "grave_id" | "next_date" | "status">>) =>
+      apiClient.post<{ message: string; reminders: Reminder[] }>("/api/reminders/bulk-create", { reminders }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["reminders"] }),
+  });
+}
+
 export function useUpdateReminder() {
   const qc = useQueryClient();
   return useMutation({

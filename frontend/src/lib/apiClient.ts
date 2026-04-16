@@ -45,10 +45,21 @@ async function request<T>(
 
   if (!res.ok) {
     const text = await res.text();
+    let errorMessage = `API error ${res.status}`;
+    
+    try {
+      const json = JSON.parse(text);
+      if (json.error) {
+        errorMessage = json.error;
+      }
+    } catch {
+      errorMessage = `${errorMessage}: ${text}`;
+    }
+    
     if (res.status === 401 && unauthorizedHandler) {
       unauthorizedHandler();
     }
-    throw new ApiError(res.status, `API error ${res.status}: ${text}`);
+    throw new ApiError(res.status, errorMessage);
   }
 
   return res.json() as Promise<T>;

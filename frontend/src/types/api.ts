@@ -48,6 +48,11 @@ export interface Grave {
   custom_frequency_months: number | null;
   base_price: number;
   notes: string;
+  reminders?: Array<{
+    id: number;
+    next_date: string;
+    status: ReminderStatus;
+  }>;
   created_at: string;
 }
 

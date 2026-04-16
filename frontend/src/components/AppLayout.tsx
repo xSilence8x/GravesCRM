@@ -1,9 +1,11 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
 
   return (
     <SidebarProvider>
@@ -14,9 +16,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <SidebarTrigger className="mr-4" />
             <span className="text-sm font-medium text-muted-foreground">GraveCare CRM</span>
             {user && (
-              <span className="ml-auto text-xs md:text-sm text-muted-foreground">
-                Přihlášen: {user.nickname || user.email}
-              </span>
+              <div className="ml-auto flex items-center gap-3">
+                <span className="text-xs md:text-sm text-muted-foreground">
+                  {user.nickname || user.email}
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={signOut}
+                  className="text-xs md:text-sm"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
             )}
           </header>
           <main className="flex-1 p-4 md:p-6 overflow-auto">

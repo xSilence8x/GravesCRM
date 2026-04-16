@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -19,7 +19,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check existing session on mount
   useEffect(() => {
-    setUnauthorizedHandler(() => {
+    // Nejdřív nastavíme handler
+    const handleUnauthorized = () => {
       setUser((prev) => {
         if (prev) {
           toast({
@@ -30,25 +31,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return null;
       });
-    });
+    };
+    
+    setUnauthorizedHandler(handleUnauthorized);
 
+    // Pak zavolají `/api/auth/me`
     apiClient
       .get<{ user: AuthUser | null }>("/api/auth/me")
       .then((data) => setUser(data.user))
-      .catch(() => setUser(null))
+      .catch((error) => {
+        // Chybu já zpracován handlers, jen si ji logujeme
+        console.error("Chyba při načítání uživatele:", error);
+        setUser(null);
+      })
       .finally(() => setLoading(false));
 
     return () => setUnauthorizedHandler(null);
   }, []);
 
-  const signIn = async (email: string, password: string): Promise<{ error: Error | null }> => {
+  const signIn = async (email: string, password: string, rememberMe?: boolean): Promise<{ error: Error | null }> => {
     try {
-      const data = await apiClient.post<{ user: AuthUser; error?: string }>("/api/auth/login", { email, password });
+      const data = await apiClient.post<{ user: AuthUser; error?: string }>("/api/auth/login", { 
+        email, 
+        password,
+        remember_me: rememberMe ?? false
+      });
       if (data.error) return { error: new Error(data.error) };
       setUser(data.user);
       return { error: null };
     } catch (err: any) {
-      return { error: err };
+      const errorMessage = err?.message || "Došlo k chybě při přihlášení";
+      return { error: new Error(errorMessage) };
     }
   };
 
@@ -59,7 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       return { error: null };
     } catch (err: any) {
-      return { error: err };
+      const errorMessage = err?.message || "Došlo k chybě při registraci";
+      return { error: new Error(errorMessage) };
     }
   };
 

@@ -12,20 +12,31 @@ import { useGraves, useAddGrave, useUpdateGrave, useDeleteGrave } from "@/hooks/
 import { useClients } from "@/hooks/useClients";
 import { useGraveyards } from "@/hooks/useGraveyards";
 import { EditGraveDialog } from "@/components/EditGraveDialog";
+import { ReminderDateFields } from "@/components/ReminderDateFields";
+import { useBulkAddReminders } from "@/hooks/useReminders";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+
+interface ReminderDate {
+  id: string;
+  date: string;
+}
 
 export default function GravesPage() {
   const [search, setSearch] = useState("");
   const [cemeteryFilter, setCemeteryFilter] = useState("all");
   const [open, setOpen] = useState(false);
   const [editGrave, setEditGrave] = useState<any | null>(null);
+  const [reminderDates, setReminderDates] = useState<ReminderDate[]>([]);
   const { data: graves = [], isLoading } = useGraves();
+  
+  console.log("GravesPage - graves loaded:", graves.length, graves.length > 0 ? graves[1] : null);
   const { data: clients = [] } = useClients();
   const { data: graveyards = [] } = useGraveyards();
   const addGrave = useAddGrave();
   const updateGrave = useUpdateGrave();
   const deleteGrave = useDeleteGrave();
+  const bulkAddReminders = useBulkAddReminders();
 
   const [form, setForm] = useState({
     client_id: "", graveyard_id: "", name_on_grave: "", grave_number: "", latitude: "50.0755", longitude: "14.4378",
@@ -56,10 +67,37 @@ export default function GravesPage() {
         cleaning_frequency: form.cleaning_frequency, base_price: parseFloat(form.base_price) || 0, notes: form.notes,
       },
       {
-        onSuccess: () => {
-          setOpen(false);
-          setForm({ client_id: "", graveyard_id: "", name_on_grave: "", grave_number: "", latitude: "50.0755", longitude: "14.4378", cleaning_frequency: "2x", base_price: "", notes: "" });
-          toast({ title: "Hrob přidán" });
+        onSuccess: (newGrave) => {
+          const validReminders = reminderDates.filter((r) => r.date);
+          
+          if (validReminders.length > 0) {
+            const remindersToCreate = validReminders.map((r) => ({
+              client_id: Number(form.client_id),
+              grave_id: newGrave.id,
+              next_date: r.date,
+              status: "upcoming" as const,
+            }));
+
+            bulkAddReminders.mutate(remindersToCreate, {
+              onSuccess: () => {
+                toast({ title: "Hrob přidán", description: `Přidáno ${validReminders.length} reminders` });
+                setOpen(false);
+                setForm({ client_id: "", graveyard_id: "", name_on_grave: "", grave_number: "", latitude: "50.0755", longitude: "14.4378", cleaning_frequency: "2x", base_price: "", notes: "" });
+                setReminderDates([]);
+              },
+              onError: (error: any) => {
+                toast({ title: "Chyba", description: `Hrob přidán, ale reminders selhaly: ${error.message}`, variant: "destructive" });
+                setOpen(false);
+                setForm({ client_id: "", graveyard_id: "", name_on_grave: "", grave_number: "", latitude: "50.0755", longitude: "14.4378", cleaning_frequency: "2x", base_price: "", notes: "" });
+                setReminderDates([]);
+              },
+            });
+          } else {
+            setOpen(false);
+            setForm({ client_id: "", graveyard_id: "", name_on_grave: "", grave_number: "", latitude: "50.0755", longitude: "14.4378", cleaning_frequency: "2x", base_price: "", notes: "" });
+            setReminderDates([]);
+            toast({ title: "Hrob přidán" });
+          }
         },
         onError: (e) => toast({ title: "Chyba", description: e.message, variant: "destructive" }),
       }
@@ -89,14 +127,13 @@ export default function GravesPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="page-title">Hroby</h1>
-                  <div className="space-y-1"><Label>Jméno na hrobě</Label><Input value={form.name_on_grave} onChange={(e) => setForm((f) => ({ ...f, name_on_grave: e.target.value }))} /></div>
             <p className="page-description">Správa hrobových záznamů a umístění</p>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button><Plus className="h-4 w-4 mr-2" />Přidat hrob</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Nový hrob</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <div className="space-y-1">
@@ -121,6 +158,9 @@ export default function GravesPage() {
                   <div className="space-y-1"><Label>Číslo hrobu *</Label><Input value={form.grave_number} onChange={(e) => setForm((f) => ({ ...f, grave_number: e.target.value }))} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1"><Label>Jméno na hrobě</Label><Input value={form.name_on_grave} onChange={(e) => setForm((f) => ({ ...f, name_on_grave: e.target.value }))} /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1"><Label>Zeměpisná šířka</Label><Input value={form.latitude} onChange={(e) => setForm((f) => ({ ...f, latitude: e.target.value }))} /></div>
                   <div className="space-y-1"><Label>Zeměpisná délka</Label><Input value={form.longitude} onChange={(e) => setForm((f) => ({ ...f, longitude: e.target.value }))} /></div>
                 </div>
@@ -137,10 +177,17 @@ export default function GravesPage() {
                   </div>
                   <div className="space-y-1"><Label>Základní cena (Kč)</Label><Input type="number" value={form.base_price} onChange={(e) => setForm((f) => ({ ...f, base_price: e.target.value }))} /></div>
                 </div>
+
+                <ReminderDateFields
+                  cleaningFrequency={form.cleaning_frequency}
+                  value={reminderDates}
+                  onChange={setReminderDates}
+                />
+
                 <div className="space-y-1"><Label>Poznámky</Label><Textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} /></div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setOpen(false)}>Zrušit</Button>
-                  <Button onClick={handleAdd} disabled={addGrave.isPending}>Přidat hrob</Button>
+                  <Button onClick={handleAdd} disabled={addGrave.isPending || bulkAddReminders.isPending}>Přidat hrob</Button>
                 </div>
               </div>
             </DialogContent>
@@ -173,7 +220,8 @@ export default function GravesPage() {
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="text-base">{grave.cemetery_name}</CardTitle>
+                    <CardTitle className="text-base">{getClientName(grave)}</CardTitle>
+                    {grave.name_on_grave && <p className="text-sm text-muted-foreground">Jméno na hrobě: {grave.name_on_grave}</p>}
                     <p className="text-sm text-muted-foreground">Hrob č. {grave.grave_number}</p>
                   </div>
                   <div className="flex items-center gap-1">
@@ -188,8 +236,7 @@ export default function GravesPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-1 text-sm">
-                <p className="text-muted-foreground">Klient: {getClientName(grave)}</p>
-                {grave.name_on_grave && <p className="text-muted-foreground">Jméno na hrobě: {grave.name_on_grave}</p>}
+                <p className="text-muted-foreground">{grave.cemetery_name}</p>
                 <p className="font-medium">{Number(grave.base_price).toLocaleString()} Kč</p>
                 {grave.notes && <p className="text-xs italic text-muted-foreground">{grave.notes}</p>}
               </CardContent>

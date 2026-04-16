@@ -48,15 +48,15 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div>
-              <h2 className="text-sm font-bold text-sidebar-accent-foreground">GraveCare</h2>
-              <p className="text-xs text-sidebar-muted">Management System</p>
+              <h2 className="text-base md:text-sm font-bold text-sidebar-accent-foreground">GraveCare</h2>
+              <p className="text-sm md:text-xs text-sidebar-muted">Management System</p>
             </div>
           )}
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigace</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-base md:text-xs">Navigace</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
@@ -73,8 +73,8 @@ export function AppSidebar() {
                         }
                       }}
                     >
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                      <item.icon className="mr-2 h-5 w-5 md:h-4 md:w-4" />
+                      {!collapsed && <span className="text-base md:text-sm">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

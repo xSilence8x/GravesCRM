@@ -58,6 +58,40 @@ def create_reminder():
     return jsonify(reminder_to_dict(r)), 201
 
 
+@reminders_bp.route("/bulk-create", methods=["POST"])
+@login_required
+def bulk_create_reminders():
+    """Vytvoří více reminders najednou (např. pro plánovanou údržbu)"""
+    data = request.get_json()
+    reminders_data = data.get("reminders", [])
+    
+    if not isinstance(reminders_data, list) or len(reminders_data) == 0:
+        return jsonify({"error": "Pole 'reminders' musí obsahovat alespoň jednu položku"}), 400
+    
+    from datetime import date
+    created_reminders = []
+    
+    try:
+        for reminder_data in reminders_data:
+            r = Reminder(
+                client_id=reminder_data["client_id"],
+                grave_id=reminder_data["grave_id"],
+                next_date=date.fromisoformat(reminder_data["next_date"]),
+                status=reminder_data.get("status", "upcoming"),
+            )
+            db.session.add(r)
+            created_reminders.append(r)
+        
+        db.session.commit()
+        return jsonify({
+            "message": f"Vytvořeno {len(created_reminders)} reminders",
+            "reminders": [reminder_to_dict(r) for r in created_reminders]
+        }), 201
+    except (ValueError, KeyError) as e:
+        db.session.rollback()
+        return jsonify({"error": f"Chyba při zpracování dat: {str(e)}"}), 400
+
+
 @reminders_bp.route("/<int:reminder_id>", methods=["PATCH"])
 @login_required
 def update_reminder(reminder_id):

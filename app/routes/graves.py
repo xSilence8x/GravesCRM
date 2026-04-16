@@ -11,6 +11,19 @@ def grave_to_dict(g):
     if g.client:
         client_name = f"{g.client.first_name or ''} {g.client.last_name or ''}".strip() or g.client.company or ""
     cemetery_name = g.graveyard.name if g.graveyard else ""
+    
+    # Načti reminders pro tento hrob
+    reminders = []
+    if g.reminders:
+        reminders = [
+            {
+                "id": r.id,
+                "next_date": r.next_date.isoformat() if r.next_date else None,
+                "status": r.status,
+            }
+            for r in g.reminders
+        ]
+    
     return {
         "id": g.id,
         "client_id": g.client_id,
@@ -26,6 +39,7 @@ def grave_to_dict(g):
         "custom_frequency_months": g.custom_frequency_months,
         "base_price": float(g.base_price),
         "notes": g.notes or "",
+        "reminders": reminders,
         "created_at": g.created_at.isoformat(),
     }
 

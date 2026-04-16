@@ -15,6 +15,7 @@ import InvoicesPage from "@/pages/InvoicesPage";
 import MapPage from "@/pages/MapPage";
 import RemindersPage from "@/pages/RemindersPage";
 import AuthPage from "@/pages/AuthPage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -54,8 +55,18 @@ function ProtectedRoutes() {
 
 function AuthRoute() {
   const { user, loading } = useAuth();
-  if (loading) return null;
-  if (user) return <Navigate to="/" replace />;
+  
+  // Pokud se načítá, nezobrazuj nic
+  if (loading) {
+    return null;
+  }
+  
+  // Pokud je uživatel přihlášen, přesměruj na dashboard
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
+  
+  // Jinak zobraz přihlašovací stránku
   return <AuthPage />;
 }
 
@@ -68,6 +79,7 @@ const App = () => (
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             <Route path="/auth" element={<AuthRoute />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/*" element={<ProtectedRoutes />} />
           </Routes>
         </BrowserRouter>

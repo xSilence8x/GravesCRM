@@ -5,13 +5,10 @@ import { useGraves } from "@/hooks/useGraves";
 import { useOrders } from "@/hooks/useOrders";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useReminders } from "@/hooks/useReminders";
-import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Users, MapPin, ClipboardList, FileText, AlertTriangle, Clock, CheckCircle, DollarSign, LogOut } from "lucide-react";
+import { Users, MapPin, ClipboardList, FileText, AlertTriangle, Clock, CheckCircle, DollarSign } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
-  const { signOut } = useAuth();
   const { data: clients = [], isLoading: cl } = useClients();
   const { data: graves = [], isLoading: gl } = useGraves();
   const { data: orders = [], isLoading: ol } = useOrders();
@@ -36,14 +33,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="page-title">Přehled</h1>
-          <p className="page-description">Souhrn vašeho podnikání v údržbě hrobů</p>
-        </div>
-        <Button variant="ghost" size="sm" onClick={signOut}>
-          <LogOut className="h-4 w-4 mr-2" /> Odhlásit se
-        </Button>
+      <div>
+        <h1 className="page-title">Přehled</h1>
+        <p className="page-description">Souhrn vašeho podnikání v údržbě hrobů</p>
       </div>
 
       {isLoading ? (

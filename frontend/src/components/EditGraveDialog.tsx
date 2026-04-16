@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { Client } from "@/hooks/useClients";
 import { Graveyard } from "@/hooks/useGraveyards";
+import { ReminderDateFields } from "./ReminderDateFields";
+import { useBulkAddReminders } from "@/hooks/useReminders";
+
+interface ReminderDate {
+  id: string;
+  date: string;
+  isExisting?: boolean;
+}
 
 interface EditGraveDialogProps {
   grave: any | null;
@@ -23,34 +32,207 @@ export function EditGraveDialog({ grave, clients, graveyards, open, onOpenChange
     client_id: "", graveyard_id: "", grave_number: "", latitude: "", longitude: "",
     name_on_grave: "", cleaning_frequency: "2x" as "1x" | "2x" | "4x" | "custom", base_price: "", notes: "",
   });
+  const [reminderDates, setReminderDates] = useState<ReminderDate[]>([]);
+  const bulkAddReminders = useBulkAddReminders();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (grave) {
-      setForm({
-        client_id: String(grave.client_id), graveyard_id: String(grave.graveyard_id), name_on_grave: grave.name_on_grave || "", grave_number: grave.grave_number,
-        latitude: String(grave.latitude), longitude: String(grave.longitude),
-        cleaning_frequency: grave.cleaning_frequency, base_price: String(grave.base_price), notes: grave.notes,
-      });
-    }
-  }, [grave]);
+    // Refetch graves data when dialog opens to get latest reminders
+    const refetchGraves = async () => {
+      if (grave && open) {
+        try {
+          await queryClient.refetchQueries({ queryKey: ["graves"] });
+        } catch (error) {
+          console.error("Error refetching graves:", error);
+        }
+      }
+    };
+    refetchGraves();
+  }, [grave, open, queryClient]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (grave && open) {
+      // Fetch fresh grave data from API to get latest reminders
+      const fetchGraveData = async () => {
+        try {
+          console.log("EditGraveDialog - Fetching grave data for ID:", grave.id);
+          const response = await fetch(`/api/graves/${grave.id}`, {
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+          
+          if (!response.ok) {
+            console.error("API responded with status:", response.status);
+            throw new Error(`Failed to fetch grave: ${response.status}`);
+          }
+          
+          const freshGraveData = await response.json();
+          
+          console.log("EditGraveDialog - fresh grave data:", freshGraveData);
+          console.log("EditGraveDialog - fresh grave reminders:", freshGraveData.reminders);
+          
+          setForm({
+            client_id: String(freshGraveData.client_id),
+            graveyard_id: String(freshGraveData.graveyard_id),
+            name_on_grave: freshGraveData.name_on_grave || "",
+            grave_number: freshGraveData.grave_number,
+            latitude: String(freshGraveData.latitude),
+            longitude: String(freshGraveData.longitude),
+            cleaning_frequency: freshGraveData.cleaning_frequency,
+            base_price: String(freshGraveData.base_price),
+            notes: freshGraveData.notes,
+          });
+          
+          // Load existing reminders from fresh data
+          if (freshGraveData.reminders && Array.isArray(freshGraveData.reminders)) {
+            const loadedReminders: ReminderDate[] = freshGraveData.reminders
+              .sort((a: any, b: any) => new Date(a.next_date).getTime() - new Date(b.next_date).getTime())
+              .map((reminder: any) => ({
+                id: `reminder-${reminder.id}`,
+                date: reminder.next_date || "",
+                isExisting: true,
+              }));
+            console.log("EditGraveDialog - loaded reminders from fresh data:", loadedReminders);
+            setReminderDates(loadedReminders);
+          } else {
+            console.log("EditGraveDialog - no reminders in fresh data");
+            setReminderDates([]);
+          }
+        } catch (error) {
+          console.error("Error fetching fresh grave data:", error);
+          // Fallback to using the prop grave data if API fetch fails
+          setForm({
+            client_id: String(grave.client_id),
+            graveyard_id: String(grave.graveyard_id),
+            name_on_grave: grave.name_on_grave || "",
+            grave_number: grave.grave_number,
+            latitude: String(grave.latitude),
+            longitude: String(grave.longitude),
+            cleaning_frequency: grave.cleaning_frequency,
+            base_price: String(grave.base_price),
+            notes: grave.notes,
+          });
+          setReminderDates([]);
+        }
+      };
+      
+      fetchGraveData();
+    }
+  }, [grave, open]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.client_id || !form.graveyard_id || !form.grave_number) {
       toast({ title: "Chyba", description: "Klient, hřbitov a číslo hrobu jsou povinné.", variant: "destructive" });
       return;
     }
-    onSave({
+    
+    const graveData = {
       id: grave!.id, client_id: Number(form.client_id), graveyard_id: Number(form.graveyard_id), name_on_grave: form.name_on_grave || null, grave_number: form.grave_number,
       latitude: parseFloat(form.latitude) || 50.0755, longitude: parseFloat(form.longitude) || 14.4378,
       cleaning_frequency: form.cleaning_frequency, base_price: parseFloat(form.base_price) || 0, notes: form.notes,
-    });
+    };
+
+    onSave(graveData);
+
+    // Odděluj nové a existující reminders
+    const existingReminders = reminderDates.filter((r) => r.isExisting && r.date);
+    const newReminders = reminderDates.filter((r) => r.date && !r.isExisting);
+    
+    let updateCount = 0;
+    let createCount = 0;
+    const errors: string[] = [];
+
+    // Aktualizuj EXISTUJÍCÍ reminders (PATCH)
+    for (const reminder of existingReminders) {
+      if (reminder.id) {
+        const reminderId = reminder.id.replace("reminder-", "");
+        try {
+          const response = await fetch(`/api/reminders/${reminderId}`, {
+            method: "PATCH",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ next_date: reminder.date }),
+          });
+          if (response.ok) {
+            updateCount++;
+            console.log(`✓ Updated reminder ${reminderId} to ${reminder.date}`);
+          } else {
+            const errorData = await response.text();
+            errors.push(`Reminder ${reminderId}: ${response.status}`);
+            console.error(`✗ Failed to update reminder ${reminderId}: ${response.status}`, errorData);
+          }
+        } catch (error: any) {
+          errors.push(`Reminder ${reminderId}: ${error.message}`);
+          console.error(`✗ Error updating reminder ${reminderId}:`, error);
+        }
+      }
+    }
+
+    // Vytvoř NOVÉ reminders (POST via bulk-create)
+    if (newReminders.length > 0) {
+      try {
+        const remindersToCreate = newReminders.map((r) => ({
+          client_id: Number(form.client_id),
+          grave_id: grave!.id,
+          next_date: r.date,
+          status: "upcoming" as const,
+        }));
+
+        const response = await fetch("/api/reminders/bulk-create", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reminders: remindersToCreate }),
+        });
+
+        if (response.ok) {
+          createCount = newReminders.length;
+          console.log(`✓ Created ${createCount} new reminders`);
+        } else {
+          const errorData = await response.text();
+          errors.push(`Bulk create: ${response.status}`);
+          console.error(`✗ Failed to create reminders: ${response.status}`, errorData);
+        }
+      } catch (error: any) {
+        errors.push(`Bulk create: ${error.message}`);
+        console.error("✗ Error creating reminders:", error);
+      }
+    }
+
+    // Zobraz výsledky a zavři dialog
+    const totalUpdated = updateCount + createCount;
+    const totalErrors = errors.length;
+    
+    if (totalErrors === 0 && totalUpdated > 0) {
+      toast({ 
+        title: "Úspěšně uloženo", 
+        description: `Aktualizováno ${updateCount} reminders, přidáno ${createCount} nových` 
+      });
+    } else if (totalErrors === 0) {
+      toast({ title: "Hrob upraven" });
+    } else if (totalUpdated > 0) {
+      toast({ 
+        title: "Částečná úprava", 
+        description: `Uloženo: ${totalUpdated}, Chyby: ${errors.join("; ")}`, 
+        variant: "destructive" 
+      });
+    } else {
+      toast({ 
+        title: "Chyba", 
+        description: `Chyby: ${errors.join("; ")}`, 
+        variant: "destructive" 
+      });
+    }
+    
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Upravit hrob</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-1">
@@ -88,10 +270,17 @@ export function EditGraveDialog({ grave, clients, graveyards, open, onOpenChange
             </div>
             <div className="space-y-1"><Label>Základní cena (Kč)</Label><Input type="number" value={form.base_price} onChange={(e) => setForm((f) => ({ ...f, base_price: e.target.value }))} /></div>
           </div>
+
+          <ReminderDateFields
+            cleaningFrequency={form.cleaning_frequency}
+            value={reminderDates}
+            onChange={setReminderDates}
+          />
+
           <div className="space-y-1"><Label>Poznámky</Label><Textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} /></div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Zrušit</Button>
-            <Button type="submit">Uložit</Button>
+            <Button type="submit" disabled={bulkAddReminders.isPending}>Uložit</Button>
           </div>
         </form>
       </DialogContent>

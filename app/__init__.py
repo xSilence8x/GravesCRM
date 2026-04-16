@@ -2,7 +2,7 @@ import os
 from flask import Flask, send_from_directory
 
 from app.config import Config
-from app.extensions import db, migrate, login_manager, cors
+from app.extensions import db, migrate, login_manager, cors, mail, get_ssl_context
 from app.routes.auth import auth_bp
 from app.routes.clients import clients_bp
 from app.routes.graveyards import graveyards_bp
@@ -24,6 +24,12 @@ def create_app():
 
     db.init_app(app)
     login_manager.init_app(app)
+    
+    # Inicializuj Flask-Mail s SSL context pro TLS
+    if app.config.get("MAIL_USE_TLS"):
+        app.config["MAIL_SSL_CONTEXT"] = get_ssl_context()
+    
+    mail.init_app(app)
     
     # CORS
     cors.init_app(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
