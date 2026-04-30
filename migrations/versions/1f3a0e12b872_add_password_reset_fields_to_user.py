@@ -1,7 +1,7 @@
 """Add password reset fields to User
 
 Revision ID: 1f3a0e12b872
-Revises: a9d41c3e2b88
+Revises: 3e5f8a9c7d12
 Create Date: 2026-04-16 08:28:49.621338
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '1f3a0e12b872'
-down_revision = 'a9d41c3e2b88'
+down_revision = '3e5f8a9c7d12'
 branch_labels = None
 depends_on = None
 
