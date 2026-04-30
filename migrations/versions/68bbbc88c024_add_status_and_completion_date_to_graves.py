@@ -27,11 +27,6 @@ def upgrade():
                nullable=True)
         batch_op.drop_index(batch_op.f('ix_additional_services_order_id'))
 
-    with op.batch_alter_table('google_calendar_connections', schema=None) as batch_op:
-        batch_op.drop_constraint(batch_op.f('google_calendar_connections_user_id_key'), type_='unique')
-        batch_op.drop_index(batch_op.f('ix_google_calendar_connections_user_id'))
-        batch_op.create_index(batch_op.f('ix_google_calendar_connections_user_id'), ['user_id'], unique=True)
-
     with op.batch_alter_table('graves', schema=None) as batch_op:
         batch_op.alter_column('status',
                existing_type=sa.VARCHAR(length=30),
@@ -76,11 +71,6 @@ def downgrade():
                type_=sa.VARCHAR(length=30),
                existing_nullable=False,
                existing_server_default=sa.text("'plánováno'::character varying"))
-
-    with op.batch_alter_table('google_calendar_connections', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_google_calendar_connections_user_id'))
-        batch_op.create_index(batch_op.f('ix_google_calendar_connections_user_id'), ['user_id'], unique=False)
-        batch_op.create_unique_constraint(batch_op.f('google_calendar_connections_user_id_key'), ['user_id'], postgresql_nulls_not_distinct=False)
 
     with op.batch_alter_table('additional_services', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_additional_services_order_id'), ['order_id'], unique=False)
