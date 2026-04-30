@@ -1,7 +1,7 @@
 """Add grave_id to additional_services, invoices, and photos
 
 Revision ID: 3e5f8a9c7d12
-Revises: a9d41c3e2b88
+Revises: 2a5f8a9c7d11
 Create Date: 2026-04-30 00:00:00.000000
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '3e5f8a9c7d12'
-down_revision = 'a9d41c3e2b88'
+down_revision = '2a5f8a9c7d11'
 branch_labels = None
 depends_on = None
 
