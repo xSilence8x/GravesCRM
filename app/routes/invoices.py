@@ -69,11 +69,20 @@ def create_invoice():
     # Ověř, že Grave existuje
     Grave.query.get_or_404(data["grave_id"])
     
+    # Generuj číslo faktury na backendu
+    today = date.today()
+    yyyymmdd = today.strftime("%Y%m%d")
+    
+    # Počet faktur vytvořených dnes
+    today_invoices = Invoice.query.filter(Invoice.issue_date == today).all()
+    sequence = str(len(today_invoices) + 1).zfill(2)
+    invoice_number = f"{yyyymmdd}{sequence}"
+    
     inv = Invoice(
         grave_id=data["grave_id"],
-        invoice_number=data["invoice_number"],
-        issue_date=date.today(),
-        due_date=date.today() + timedelta(days=30),
+        invoice_number=invoice_number,
+        issue_date=today,
+        due_date=today + timedelta(days=14),
         total_price=data.get("total_price", 0),
         notes=data.get("notes", ""),
     )

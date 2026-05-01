@@ -118,3 +118,64 @@ export function useDeletePhoto() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["graves"] }),
   });
 }
+
+export function useInitCleanings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (graveId: number) =>
+      apiClient.post(`/api/graves/${graveId}/cleanings/init`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["graves"] }),
+  });
+}
+
+export function useUploadCleaningPhoto() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      cleaningId,
+      file,
+      photo_type,
+      note,
+    }: {
+      cleaningId: number;
+      file: File;
+      photo_type: "před" | "po";
+      note?: string;
+    }) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("photo_type", photo_type);
+      if (note) formData.append("note", note);
+
+      const res = await fetch(`/api/graves/cleanings/${cleaningId}/photos`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Upload failed: ${text}`);
+      }
+      return res.json();
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["graves"] }),
+  });
+}
+
+export function useUpdateCleaning() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ cleaningId, ...updates }: { cleaningId: number; performed_date?: string | null }) =>
+      apiClient.patch(`/api/graves/cleanings/${cleaningId}`, updates),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["graves"] }),
+  });
+}
+
+export function useDeleteCleaningPhoto() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ cleaningId, photoId }: { cleaningId: number; photoId: number }) =>
+      apiClient.delete(`/api/graves/cleanings/${cleaningId}/photos/${photoId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["graves"] }),
+  });
+}

@@ -84,11 +84,11 @@ export function ReminderDateFields({
   const getHeading = () => {
     const labels: Record<string, string> = {
       "1x": "Datum údržby (1x ročně)",
-      "2x": "Datums údržby (2x ročně)",
-      "4x": "Datums údržby (4x ročně)",
-      custom: "Datums údržby (vlastní)",
+      "2x": "Datum údržby (2x ročně)",
+      "4x": "Datum údržby (4x ročně)",
+      custom: "Datum údržby (vlastní)",
     };
-    return labels[cleaningFrequency] || "Datums údržby";
+    return labels[cleaningFrequency] || "Datum údržby";
   };
 
   if (cleaningFrequency === "1x" || cleaningFrequency === "2x" || cleaningFrequency === "4x" || cleaningFrequency === "custom") {

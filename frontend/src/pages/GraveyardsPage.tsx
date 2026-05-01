@@ -156,7 +156,7 @@ export default function GraveyardsPage() {
         <Input placeholder="Hledat hřbitov..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
       </div>
 
-      <Card>
+      <Card className="w-full max-w-full md:max-w-[75%]">
         <CardHeader>
           <CardTitle>Seznam hřbitovů</CardTitle>
         </CardHeader>

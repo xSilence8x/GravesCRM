@@ -18,7 +18,6 @@ class AdditionalService(db.Model):
         nullable=False,
         index=True,
     )
-    order_id = db.Column(db.Integer, nullable=True)  # Legacy column for data migration
     name = db.Column(db.String(255), nullable=False)
     price = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     note = db.Column(db.Text, nullable=False, default="")
@@ -125,6 +124,12 @@ class Grave(db.Model):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    cleanings = db.relationship(
+        "Cleaning",
+        back_populates="grave",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
     def __repr__(self):
         return f"<Grave id={self.id} graveyard_id={self.graveyard_id} grave_number={self.grave_number} status={self.status}>"
@@ -150,6 +155,33 @@ class Graveyard(db.Model):
         return f"<Graveyard id={self.id} name={self.name}>"
 
 
+class Cleaning(db.Model):
+    __tablename__ = "cleanings"
+
+    id = db.Column(db.Integer, primary_key=True)
+    grave_id = db.Column(
+        db.Integer,
+        db.ForeignKey("graves.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    cleaning_number = db.Column(db.Integer, nullable=False)  # 1, 2, 3, ...
+    performed_date = db.Column(db.Date, nullable=True)  # Datum provedení úklidu
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+
+    grave = db.relationship("Grave", back_populates="cleanings")
+    photos = db.relationship(
+        "Photo",
+        back_populates="cleaning",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    def __repr__(self):
+        return f"<Cleaning id={self.id} grave_id={self.grave_id} cleaning_number={self.cleaning_number}>"
+
+
 class Invoice(db.Model):
     __tablename__ = "invoices"
 
@@ -160,13 +192,12 @@ class Invoice(db.Model):
         nullable=False,
         index=True,
     )
-    order_id = db.Column(db.Integer, nullable=True)  # Legacy column for data migration
     invoice_number = db.Column(db.String(50), unique=True, nullable=False)
     issue_date = db.Column(db.Date, nullable=False, default=date.today)
     due_date = db.Column(
         db.Date,
         nullable=False,
-        default=lambda: date.today() + timedelta(days=30),
+        default=lambda: date.today() + timedelta(days=14),
     )
     total_price = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     notes = db.Column(db.Text, nullable=False, default="")
@@ -186,13 +217,18 @@ class Photo(db.Model):
     __tablename__ = "photos"
 
     id = db.Column(db.Integer, primary_key=True)
+    cleaning_id = db.Column(
+        db.Integer,
+        db.ForeignKey("cleanings.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
     grave_id = db.Column(
         db.Integer,
         db.ForeignKey("graves.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
-    order_id = db.Column(db.Integer, nullable=True)  # Legacy column for data migration
     url = db.Column(db.Text, nullable=False)
     photo_type = db.Column(db.String(20), nullable=False, default="před")
     note = db.Column(db.Text, nullable=False, default="")
@@ -200,6 +236,7 @@ class Photo(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
 
     grave = db.relationship("Grave", back_populates="photos")
+    cleaning = db.relationship("Cleaning", back_populates="photos")
 
     def __repr__(self):
         return f"<Photo id={self.id} type={self.photo_type}>"

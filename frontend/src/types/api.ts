@@ -34,6 +34,24 @@ export interface Graveyard {
   created_at: string;
 }
 
+export interface Photo {
+  id: number;
+  grave_id: number | null;
+  cleaning_id: number | null;
+  url: string;
+  type: PhotoType;
+  note: string;
+}
+
+export interface Cleaning {
+  id: number;
+  grave_id: number;
+  cleaning_number: number;
+  performed_date: string | null;
+  photos: Photo[];
+  created_at: string;
+}
+
 export interface Grave {
   id: number;
   client_id: number;
@@ -50,7 +68,7 @@ export interface Grave {
   notes: string;
   status: GraveStatus;
   completion_date: string | null;
-  photos: Photo[];
+  cleanings: Cleaning[];
   additional_services: AdditionalService[];
   reminders?: Array<{
     id: number;
@@ -58,22 +76,6 @@ export interface Grave {
     status: ReminderStatus;
   }>;
   created_at: string;
-}
-
-export interface AdditionalService {
-  id: number;
-  grave_id: number;
-  name: string;
-  price: number;
-  note: string;
-}
-
-export interface Photo {
-  id: number;
-  grave_id: number;
-  url: string;
-  type: PhotoType;
-  note: string;
 }
 
 export interface MaintenanceOrder {

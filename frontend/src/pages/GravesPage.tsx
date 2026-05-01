@@ -23,6 +23,7 @@ interface ReminderDate {
 
 export default function GravesPage() {
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [open, setOpen] = useState(false);
   const [editGrave, setEditGrave] = useState<any | null>(null);
   const [reminderDates, setReminderDates] = useState<ReminderDate[]>([]);
@@ -40,12 +41,18 @@ export default function GravesPage() {
 
   const filtered = graves.filter((g: any) => {
     const clientName = g.clients?.full_name ?? "—";
-    return (
-      g.cemetery_name.toLowerCase().includes(search.toLowerCase()) ||
-      g.grave_number.toLowerCase().includes(search.toLowerCase()) ||
-      clientName.toLowerCase().includes(search.toLowerCase()) ||
-      g.name_on_grave?.toLowerCase().includes(search.toLowerCase())
-    );
+    const normalizedSearch = search.toLowerCase();
+
+    const matchesSearch =
+      g.cemetery_name?.toLowerCase().includes(normalizedSearch) ||
+      g.grave_number?.toLowerCase().includes(normalizedSearch) ||
+      clientName.toLowerCase().includes(normalizedSearch) ||
+      g.name_on_grave?.toLowerCase().includes(normalizedSearch);
+
+    const matchesStatus =
+      statusFilter === "all" || g.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
   });
 
   const handleAdd = () => {
@@ -68,7 +75,7 @@ export default function GravesPage() {
               client_id: Number(form.client_id),
               grave_id: newGrave.id,
               next_date: r.date,
-              status: "nadcházející" as const,
+              status: "upcoming" as const,
             }));
 
             bulkAddReminders.mutate(remindersToCreate, {
@@ -286,17 +293,32 @@ export default function GravesPage() {
         </div>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Hledat hroby..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      <div className="flex flex-col sm:flex-row gap-2 max-w-xl">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Hledat hroby..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Všechny statusy</SelectItem>
+            <SelectItem value="plánováno">Plánováno</SelectItem>
+            <SelectItem value="probíhá">Probíhá</SelectItem>
+            <SelectItem value="dokončeno">Dokončeno</SelectItem>
+            <SelectItem value="zrušeno">Zrušeno</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      <div className="w-full max-w-[75%]">
+      <div className="w-full max-w-full md:max-w-[75%]">
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (

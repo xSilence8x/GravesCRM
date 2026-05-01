@@ -20,8 +20,31 @@ export function useInvoices() {
 export function useAddInvoice() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (invoice: Pick<Invoice, "order_id" | "invoice_number" | "total_price">) =>
+    mutationFn: (invoice: Pick<Invoice, "grave_id" | "total_price">) =>
       apiClient.post<Invoice>("/api/invoices/", invoice),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["invoices"] }),
+  });
+}
+
+export function useDeleteInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (invoiceId: number) => {
+      const res = await fetch(`/api/invoices/${invoiceId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        throw new Error("Nepodařilo se stornovat fakturu.");
+      }
+
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invoices" ]});
+      queryClient.invalidateQueries({ queryKey: ["graves"] });
+    },
   });
 }

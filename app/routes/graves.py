@@ -1,9 +1,10 @@
 import os
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from flask_login import login_required
 from werkzeug.utils import secure_filename
+from datetime import datetime
 from app.extensions import db
-from app.models import Grave, Graveyard, Photo, AdditionalService
+from app.models import Grave, Graveyard, Photo, AdditionalService, Cleaning
 
 graves_bp = Blueprint("graves", __name__)
 
@@ -16,7 +17,19 @@ def allowed_file(filename):
 
 
 def photo_to_dict(p):
-    return {"id": p.id, "grave_id": p.grave_id, "url": p.url, "type": p.photo_type, "note": p.note or ""}
+    return {"id": p.id, "grave_id": p.grave_id, "cleaning_id": p.cleaning_id, "url": f"/api/graves/photos/{p.id}/download", "type": p.photo_type, "note": p.note or ""}
+
+
+def cleaning_to_dict(c):
+    photos = [photo_to_dict(p) for p in c.photos] if c.photos else []
+    return {
+        "id": c.id,
+        "grave_id": c.grave_id,
+        "cleaning_number": c.cleaning_number,
+        "performed_date": c.performed_date.isoformat() if c.performed_date else None,
+        "photos": photos,
+        "created_at": c.created_at.isoformat(),
+    }
 
 
 def service_to_dict(s):
@@ -41,8 +54,8 @@ def grave_to_dict(g):
             for r in g.reminders
         ]
     
-    # Načti fotky
-    photos = [photo_to_dict(p) for p in g.photos] if g.photos else []
+    # Načti cleanings s fotografiemi
+    cleanings = [cleaning_to_dict(c) for c in g.cleanings] if g.cleanings else []
     
     # Načti additional_services
     services = [service_to_dict(s) for s in g.additional_services] if g.additional_services else []
@@ -64,7 +77,7 @@ def grave_to_dict(g):
         "notes": g.notes or "",
         "status": g.status,
         "completion_date": g.completion_date.isoformat() if g.completion_date else None,
-        "photos": photos,
+        "cleanings": cleanings,
         "additional_services": services,
         "reminders": reminders,
         "created_at": g.created_at.isoformat(),
@@ -204,7 +217,128 @@ def delete_photo(photo_id):
     return jsonify({"message": "Deleted."})
 
 
-# ── Additional Services ────────────────────────────────────────────────────
+@graves_bp.route("/photos/<int:photo_id>/download", methods=["GET"])
+@login_required
+def download_photo(photo_id):
+    photo = Photo.query.get_or_404(photo_id)
+    
+    try:
+        filepath = os.path.join(os.path.dirname(__file__), "..", "static", "uploads", os.path.basename(photo.url))
+        if os.path.exists(filepath):
+            return send_file(filepath, mimetype="image/jpeg")
+        else:
+            return jsonify({"error": "Soubor neexistuje"}), 404
+    except Exception as e:
+        print(f"Chyba při stažení souboru: {e}")
+        return jsonify({"error": "Chyba při stažení souboru"}), 500
+
+
+# ── Cleaning Management ────────────────────────────────────────────────────
+
+@graves_bp.route("/<int:grave_id>/cleanings/init", methods=["POST"])
+@login_required
+def init_cleanings(grave_id):
+    """Inicializuj úklidy na základě frekvence čištění"""
+    g = Grave.query.get_or_404(grave_id)
+    
+    # Zjisti počet úklidů podle frekvence
+    frequency_map = {"1x": 1, "2x": 2, "4x": 4}
+    num_cleanings = frequency_map.get(g.cleaning_frequency, 0)
+    
+    if num_cleanings == 0:
+        return jsonify({"error": "Vlastní frekvence není podporována pro inicializaci"}), 400
+    
+    # Vymaž staré úklidy
+    Cleaning.query.filter_by(grave_id=grave_id).delete()
+    
+    # Vytvoř nové úklidy
+    cleanings = []
+    for i in range(1, num_cleanings + 1):
+        cleaning = Cleaning(grave_id=grave_id, cleaning_number=i)
+        cleanings.append(cleaning)
+    
+    db.session.add_all(cleanings)
+    db.session.commit()
+    
+    return jsonify({
+        "message": f"Vytvořeno {num_cleanings} úklidů",
+        "cleanings": [cleaning_to_dict(c) for c in cleanings]
+    }), 201
+
+
+@graves_bp.route("/cleanings/<int:cleaning_id>/photos", methods=["POST"])
+@login_required
+def upload_cleaning_photo(cleaning_id):
+    """Nahraj fotografii pro konkrétní úklid"""
+    cleaning = Cleaning.query.get_or_404(cleaning_id)
+    
+    if "file" not in request.files:
+        return jsonify({"error": "Soubor chybí."}), 400
+    
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "Soubor nebyl vybrán."}), 400
+    
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Nepodporovaný formát souboru."}), 400
+    
+    # Vytvoř upload folder pokud neexistuje
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    
+    # Uloži soubor se zabezpečeným jménem
+    filename = secure_filename(file.filename)
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(filepath)
+    
+    # Vytvoř Photo záznam v DB
+    photo = Photo(
+        cleaning_id=cleaning_id,
+        grave_id=cleaning.grave_id,
+        url=f"/static/uploads/{filename}",
+        photo_type=request.form.get("photo_type", "před"),
+        note=request.form.get("note", ""),
+    )
+    db.session.add(photo)
+    db.session.commit()
+    
+    return jsonify(photo_to_dict(photo)), 201
+
+
+@graves_bp.route("/cleanings/<int:cleaning_id>", methods=["PATCH"])
+@login_required
+def update_cleaning(cleaning_id):
+    """Aktualizuj úklid (např. performed_date)"""
+    cleaning = Cleaning.query.get_or_404(cleaning_id)
+    data = request.get_json()
+    
+    if "performed_date" in data:
+        if data["performed_date"]:
+            cleaning.performed_date = datetime.fromisoformat(data["performed_date"]).date()
+        else:
+            cleaning.performed_date = None
+    
+    db.session.commit()
+    return jsonify(cleaning_to_dict(cleaning))
+
+
+@graves_bp.route("/cleanings/<int:cleaning_id>/photos/<int:photo_id>", methods=["DELETE"])
+@login_required
+def delete_cleaning_photo(cleaning_id, photo_id):
+    """Smaž fotografii z úklidu"""
+    Cleaning.query.get_or_404(cleaning_id)
+    photo = Photo.query.get_or_404(photo_id)
+    
+    # Smaž fyzický soubor
+    try:
+        filepath = os.path.join(os.path.dirname(__file__), "..", "static", "uploads", os.path.basename(photo.url))
+        if os.path.exists(filepath):
+            os.remove(filepath)
+    except Exception as e:
+        print(f"Chyba při smazání souboru: {e}")
+    
+    db.session.delete(photo)
+    db.session.commit()
+    return jsonify({"message": "Deleted."})
 
 @graves_bp.route("/<int:grave_id>/services", methods=["POST"])
 @login_required

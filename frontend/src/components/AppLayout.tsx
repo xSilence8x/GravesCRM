@@ -24,9 +24,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   variant="ghost" 
                   size="sm" 
                   onClick={signOut}
-                  className="text-xs md:text-sm"
+                  className="text-xs md:text-sm flex items-center gap-2"
                 >
                   <LogOut className="h-4 w-4" />
+                  <span className="hidden md:inline">Odhlásit</span>
                 </Button>
               </div>
             )}

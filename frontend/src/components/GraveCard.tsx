@@ -1,13 +1,28 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Trash2, Pencil, Camera } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2, Pencil, Upload, X, Calendar } from "lucide-react";
 import { Grave } from "@/types/api";
-import { useState } from "react";
-import { useDeleteGrave, useUpdateGrave } from "@/hooks/useGraves";
-import { cn } from "@/lib/utils";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useState, useRef } from "react";
+import {
+  useDeleteGrave,
+  useUpdateGrave,
+  useInitCleanings,
+  useUploadCleaningPhoto,
+  useUpdateCleaning,
+  useDeleteCleaningPhoto,
+} from "@/hooks/useGraves";
 import { toast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const statusStyles: Record<string, string> = {
   plánováno: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 hover:text-yellow-900 transition-colors cursor-pointer",
@@ -44,12 +59,31 @@ export default function GraveCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [expandedCleaning, setExpandedCleaning] = useState<number | null>(
+    grave.cleanings && grave.cleanings.length > 0 ? grave.cleanings[0].id : null
+  );
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadCleaningId, setUploadCleaningId] = useState<number | null>(null);
+  const [selectedPhotoType, setSelectedPhotoType] = useState<"před" | "po">("před");
+  const [uploadNote, setUploadNote] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
+  const [dateEditingId, setDateEditingId] = useState<number | null>(null);
+  const [editDate, setEditDate] = useState("");
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { mutate: deleteGrave } = useDeleteGrave();
   const { mutate: updateGrave } = useUpdateGrave();
-  
+  const initCleanings = useInitCleanings();
+  const uploadCleaningPhoto = useUploadCleaningPhoto();
+  const updateCleaning = useUpdateCleaning();
+  const deleteCleaningPhoto = useDeleteCleaningPhoto();
+
   const clientName = grave.clients?.full_name || "Neznámý klient";
   const cemeteryName = grave.cemetery_name || "Neznámý hřbitov";
-  
+  const currentStatus = grave.status || "plánováno";
+
   const handleStatusChange = (newStatus: string) => {
     setUpdatingStatus(true);
     updateGrave(
@@ -59,9 +93,8 @@ export default function GraveCard({
           setShowStatusDropdown(false);
           toast({ title: "Status aktualizován" });
         },
-        onError: (error) => {
+        onError: () => {
           toast({ title: "Chyba při aktualizaci statusu", variant: "destructive" });
-          console.error(error);
         },
         onSettled: () => {
           setUpdatingStatus(false);
@@ -69,12 +102,85 @@ export default function GraveCard({
       }
     );
   };
-  
-  const currentStatus = grave.status || "plánováno";
-  
+
+  const handleInitCleanings = () => {
+    initCleanings.mutate(grave.id, {
+      onSuccess: () => {
+        toast({ title: "Úklidy vytvořeny" });
+      },
+      onError: () => {
+        toast({ title: "Chyba při vytváření úklidů", variant: "destructive" });
+      },
+    });
+  };
+
+  const handlePhotoUpload = () => {
+    if (!selectedFile || !uploadCleaningId) {
+      toast({ title: "Chyba", description: "Vyberte soubor a úklid", variant: "destructive" });
+      return;
+    }
+
+    uploadCleaningPhoto.mutate(
+      {
+        cleaningId: uploadCleaningId,
+        file: selectedFile,
+        photo_type: selectedPhotoType,
+        note: uploadNote,
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Fotografie nahrána" });
+          setUploadDialogOpen(false);
+          setSelectedFile(null);
+          setUploadNote("");
+          setSelectedPhotoType("před");
+          setUploadCleaningId(null);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        },
+        onError: () => {
+          toast({ title: "Chyba při nahrávání fotografie", variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  const handleDeletePhoto = (cleaningId: number, photoId: number) => {
+    if (confirm("Smazat tuto fotografii?")) {
+      deleteCleaningPhoto.mutate(
+        { cleaningId, photoId },
+        {
+          onSuccess: () => {
+            toast({ title: "Fotografie smazána" });
+          },
+          onError: () => {
+            toast({ title: "Chyba při mazání fotografie", variant: "destructive" });
+          },
+        }
+      );
+    }
+  };
+
+  const handleSaveDate = (cleaningId: number) => {
+    updateCleaning.mutate(
+      { cleaningId, performed_date: editDate || null },
+      {
+        onSuccess: () => {
+          toast({ title: "Datum uloženo" });
+          setDateEditingId(null);
+          setEditDate("");
+        },
+        onError: () => {
+          toast({ title: "Chyba při ukládání data", variant: "destructive" });
+        },
+      }
+    );
+  };
+
   return (
     <Card className="mb-4">
-      <CardHeader 
+      <CardHeader
         className="pb-3 cursor-pointer hover:bg-slate-50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -84,7 +190,7 @@ export default function GraveCard({
               <CardTitle className="text-lg flex-shrink-0">{clientName}</CardTitle>
               <Popover open={showStatusDropdown} onOpenChange={setShowStatusDropdown}>
                 <PopoverTrigger asChild>
-                  <Badge 
+                  <Badge
                     className={statusStyles[currentStatus as keyof typeof statusStyles]}
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -111,7 +217,9 @@ export default function GraveCard({
               </Popover>
             </div>
             <div className="text-sm text-muted-foreground">
-              <p>{cemeteryName} - Hrob č. {grave.grave_number}</p>
+              <p>
+                {cemeteryName} - Hrob č. {grave.grave_number}
+              </p>
               {grave.name_on_grave && <p className="text-xs">Jméno na hrobu: {grave.name_on_grave}</p>}
             </div>
           </div>
@@ -133,11 +241,8 @@ export default function GraveCard({
               onClick={(e) => {
                 e.stopPropagation();
                 if (confirm("Smazat tento hrob a všechny související data?")) {
-                  deleteGrave(grave.id, {
-                    onSuccess: () => {
-                      if (onDeleteSuccess) onDeleteSuccess();
-                    },
-                  });
+                  deleteGrave(grave.id);
+                  if (onDeleteSuccess) onDeleteSuccess();
                 }
               }}
               title="Smazat"
@@ -146,46 +251,26 @@ export default function GraveCard({
               <Trash2 className="w-4 h-4" />
             </Button>
             <div className="text-slate-400">
-              {isExpanded ? (
-                <ChevronUp className="w-4 h-4" />
-              ) : (
-                <ChevronDown className="w-4 h-4" />
-              )}
+              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </div>
           </div>
         </div>
       </CardHeader>
 
-      <div className="border-t transition-all duration-300 ease-in-out overflow-hidden" 
+      <div
+        className="border-t transition-all duration-300 ease-in-out overflow-hidden"
         style={{
-          maxHeight: isExpanded ? "2000px" : "0px",
+          maxHeight: isExpanded ? "3000px" : "0px",
           opacity: isExpanded ? 1 : 0,
         }}
       >
         <CardContent className="pt-4 space-y-4">
-          {/* Status change section */}
-          <div className="pb-4 border-b border-slate-200">
-            <span className="font-semibold text-sm block mb-2">Změnit stav:</span>
-            <div className="flex gap-2 flex-wrap">
-              {statusOptions.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => handleStatusChange(option.value)}
-                  disabled={updatingStatus || currentStatus === option.value}
-                  className={`px-3 py-1 text-sm font-medium rounded transition-colors cursor-pointer ${option.color} disabled:opacity-40 disabled:cursor-not-allowed`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Details section */}
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="font-semibold">Frekvence úklidu:</span>
               <p className="text-muted-foreground">
-                {grave.cleaning_frequency === "vlastní" 
+                {grave.cleaning_frequency === "vlastní"
                   ? `Vlastní (${grave.custom_frequency_months} měsíců)`
                   : grave.cleaning_frequency}
               </p>
@@ -194,12 +279,6 @@ export default function GraveCard({
               <span className="font-semibold">Základní cena:</span>
               <p className="text-muted-foreground">{grave.base_price} Kč</p>
             </div>
-            {grave.completion_date && (
-              <div>
-                <span className="font-semibold">Datum dokončení:</span>
-                <p className="text-muted-foreground">{grave.completion_date}</p>
-              </div>
-            )}
           </div>
 
           {grave.notes && (
@@ -209,7 +288,7 @@ export default function GraveCard({
             </div>
           )}
 
-          {/* Services section */}
+          {/* Additional services */}
           {grave.additional_services && grave.additional_services.length > 0 && (
             <div>
               <h4 className="font-semibold text-sm mb-2">Dodatečné služby:</h4>
@@ -227,41 +306,259 @@ export default function GraveCard({
             </div>
           )}
 
-          {/* Photos section */}
-          {grave.photos && grave.photos.length > 0 && (
-            <div>
-              <h4 className="font-semibold text-sm mb-2">Fotografie ({grave.photos.length}):</h4>
-              <div className="grid grid-cols-4 gap-2">
-                {grave.photos.map((photo) => (
-                  <div key={photo.id} className="relative group">
-                    <img
-                      src={photo.url}
-                      alt={`${photo.type} fotografie`}
-                      className="w-full h-20 object-cover rounded border border-gray-200"
-                    />
-                    <span className="absolute bottom-1 left-1 text-xs bg-black/70 text-white px-2 py-1 rounded">
-                      {photo.type}
-                    </span>
+          {/* Cleanings section */}
+          <div className="space-y-3 border-t pt-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-semibold text-sm">Úklidy ({grave.cleanings?.length || 0}):</h4>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleInitCleanings()}
+                disabled={initCleanings.isPending || (grave.cleanings?.length || 0) > 0}
+              >
+                Inicializovat
+              </Button>
+            </div>
+
+            {grave.cleanings && grave.cleanings.length > 0 ? (
+              <div className="space-y-2">
+                {grave.cleanings.map((cleaning) => (
+                  <div key={cleaning.id} className="border rounded-lg p-3 bg-slate-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <h5 className="font-semibold text-sm">Úklid {cleaning.cleaning_number}</h5>
+                      <button
+                        onClick={() => setExpandedCleaning(expandedCleaning === cleaning.id ? null : cleaning.id)}
+                        className="text-slate-400 hover:text-slate-600"
+                      >
+                        {expandedCleaning === cleaning.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                    </div>
+
+                    {/* Date section */}
+                    <div className="mb-2 text-sm">
+                      {dateEditingId === cleaning.id ? (
+                        <div className="flex gap-2 items-center">
+                          <Input
+                            type="date"
+                            value={editDate}
+                            onChange={(e) => setEditDate(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                          <Button size="sm" onClick={() => handleSaveDate(cleaning.id)}>
+                            ✓
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setDateEditingId(null);
+                              setEditDate("");
+                            }}
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-slate-500" />
+                          <span className="text-slate-600">
+                            {cleaning.performed_date ? cleaning.performed_date : "Bez data"}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setDateEditingId(cleaning.id);
+                              setEditDate(cleaning.performed_date || "");
+                            }}
+                            className="text-blue-600 hover:text-blue-700 text-xs ml-auto"
+                          >
+                            Upravit
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Photos */}
+                    {expandedCleaning === cleaning.id && (
+                      <div className="mt-3 space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium">Fotografie ({cleaning.photos?.length || 0}):</span>
+                          <Dialog open={uploadDialogOpen && uploadCleaningId === cleaning.id} onOpenChange={setUploadDialogOpen}>
+                            <DialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setUploadCleaningId(cleaning.id)}
+                              >
+                                <Upload className="w-3 h-3 mr-1" />
+                                Nahrát
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Nahrát fotografii - Úklid {cleaning.cleaning_number}</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div className="space-y-2">
+                                  <Label>Typ fotografie</Label>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      variant={selectedPhotoType === "před" ? "default" : "outline"}
+                                      onClick={() => setSelectedPhotoType("před")}
+                                      className="flex-1"
+                                    >
+                                      Před úklidem
+                                    </Button>
+                                    <Button
+                                      variant={selectedPhotoType === "po" ? "default" : "outline"}
+                                      onClick={() => setSelectedPhotoType("po")}
+                                      className="flex-1"
+                                    >
+                                      Po úklidu
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="photo-file">Vyberte soubor</Label>
+                                  <Input
+                                    ref={fileInputRef}
+                                    id="photo-file"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="photo-note">Poznámka (volitelné)</Label>
+                                  <Input
+                                    id="photo-note"
+                                    placeholder="Např. Pravá strana, Detail..."
+                                    value={uploadNote}
+                                    onChange={(e) => setUploadNote(e.target.value)}
+                                  />
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                  <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>
+                                    Zrušit
+                                  </Button>
+                                  <Button
+                                    onClick={handlePhotoUpload}
+                                    disabled={!selectedFile || uploadCleaningPhoto.isPending}
+                                  >
+                                    {uploadCleaningPhoto.isPending ? "Nahrávám..." : "Nahrát"}
+                                  </Button>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+
+                        {cleaning.photos && cleaning.photos.length > 0 ? (
+                          <div className="grid grid-cols-4 gap-2">
+                            {cleaning.photos.map((photo) => (
+                              <div
+                                key={photo.id}
+                                className="relative group cursor-pointer"
+                                onClick={() => {
+                                  setSelectedPhoto(photo);
+                                  setLightboxOpen(true);
+                                }}
+                              >
+                                <img
+                                  src={photo.url}
+                                  alt={`${photo.type} fotografie`}
+                                  className="w-full h-20 object-cover rounded border border-gray-200 hover:opacity-80 transition-opacity"
+                                />
+                                <span className="absolute bottom-1 left-1 text-xs bg-black/70 text-white px-2 py-1 rounded">
+                                  {photo.type}
+                                </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeletePhoto(cleaning.id, photo.id);
+                                  }}
+                                  className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                  title="Smazat fotografii"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Žádné fotografie</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Žádné úklidy. Klikněte na "Inicializovat".</p>
+            )}
+          </div>
+
+          {/* Reminders section */}
+          {grave.reminders && grave.reminders.length > 0 && (
+            <div className="space-y-2 border-t pt-4">
+              <h4 className="font-semibold text-sm">Připomínky ({grave.reminders.length}):</h4>
+              <div className="space-y-2">
+                {grave.reminders.map((reminder) => {
+                  const normalizedStatus = reminder.status === "nadcházející" ? "upcoming" : reminder.status === "brzy" ? "due-soon" : reminder.status === "po termínu" ? "overdue" : "upcoming";
+                  
+                  const reminderBg = {
+                    upcoming: "bg-blue-50 border-blue-200",
+                    "due-soon": "bg-yellow-50 border-yellow-200",
+                    overdue: "bg-red-50 border-red-200",
+                  }[normalizedStatus] || "bg-gray-50 border-gray-200";
+
+                  const reminderBadge = {
+                    upcoming: "bg-blue-100 text-blue-800",
+                    "due-soon": "bg-yellow-100 text-yellow-800",
+                    overdue: "bg-red-100 text-red-800",
+                  }[normalizedStatus] || "bg-gray-100 text-gray-800";
+
+                  return (
+                    <div key={reminder.id} className={`border rounded p-2 text-sm ${reminderBg}`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">
+                            {reminder.cleaning_sequence && reminder.cleaning_total
+                              ? `Úklid ${reminder.cleaning_sequence}/${reminder.cleaning_total}`
+                              : "Připomínka"}
+                          </p>
+                          {reminder.next_date && (
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(reminder.next_date).toLocaleDateString("cs-CZ")}
+                            </p>
+                          )}
+                        </div>
+                        <Badge className={reminderBadge}>{reminder.status}</Badge>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* Reminders section */}
-          {grave.reminders && grave.reminders.length > 0 && (
-            <div>
-              <h4 className="font-semibold text-sm mb-2">Připomenutí ({grave.reminders.length}):</h4>
-              <ul className="space-y-1 text-sm">
-                {grave.reminders.map((reminder) => (
-                  <li key={reminder.id} className="flex justify-between items-center">
-                    <span>{reminder.next_date}</span>
-                    <Badge variant="secondary">{reminder.status}</Badge>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {/* Lightbox for full-size photo view */}
+          <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+            <DialogContent className="max-w-4xl w-full max-h-[90vh]">
+              <DialogHeader>
+                <DialogTitle>
+                  {selectedPhoto?.type === "před" ? "Fotografie před úklidem" : "Fotografie po úklidu"}
+                  {selectedPhoto?.note && ` - ${selectedPhoto.note}`}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="flex items-center justify-center bg-black/5 rounded">
+                <img
+                  src={selectedPhoto?.url}
+                  alt={`${selectedPhoto?.type} fotografie`}
+                  className="max-w-full max-h-[70vh] object-contain"
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
         </CardContent>
       </div>
     </Card>

@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useClients } from "@/hooks/useClients";
 import { useGraves } from "@/hooks/useGraves";
-import { useOrders } from "@/hooks/useOrders";
+import { useOrders } from "@/hooks/useOrders.graves-compat";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useReminders } from "@/hooks/useReminders";
 import { Users, MapPin, ClipboardList, FileText, AlertTriangle, Clock, CheckCircle, DollarSign } from "lucide-react";

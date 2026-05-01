@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { useReminders, useAddReminder } from "@/hooks/useReminders";
+import { useReminders, useAddReminder, useUpdateReminder } from "@/hooks/useReminders";
 import { useClients } from "@/hooks/useClients";
 import { useGraves } from "@/hooks/useGraves";
 import {
@@ -24,10 +24,10 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { ReminderStatus } from "@/types/api";
 
-const statusConfig: Record<ReminderStatus, { label: string; className: string; icon: typeof AlertTriangle; bg: string; text: string }> = {
-  overdue: { label: "Po termínu", className: "status-overdue", icon: AlertTriangle, bg: "bg-destructive/10", text: "text-destructive" },
-  "due-soon": { label: "Brzy", className: "status-due-soon", icon: Clock, bg: "bg-[hsl(var(--warning))]/10", text: "text-[hsl(var(--warning))]" },
-  upcoming: { label: "Nadcházející", className: "status-upcoming", icon: CalendarCheck, bg: "bg-primary/10", text: "text-primary" },
+const statusConfig: Record<ReminderStatus, { label: string; icon: typeof AlertTriangle; bg: string; text: string; bgCard: string; badgeClass: string }> = {
+  overdue: { label: "Po termínu", icon: AlertTriangle, bg: "bg-red-100 text-red-800", text: "text-red-800", bgCard: "bg-red-50 border-red-200", badgeClass: "bg-red-100 text-red-800" },
+  "due-soon": { label: "Brzy", icon: Clock, bg: "bg-yellow-100 text-yellow-800", text: "text-yellow-800", bgCard: "bg-yellow-50 border-yellow-200", badgeClass: "bg-yellow-100 text-yellow-800" },
+  upcoming: { label: "Nadcházející", icon: CalendarCheck, bg: "bg-blue-100 text-blue-800", text: "text-blue-800", bgCard: "bg-blue-50 border-blue-200", badgeClass: "bg-blue-100 text-blue-800" },
 };
 
 function normalizeReminderStatus(status: string): ReminderStatus | "hidden" {
@@ -37,6 +37,11 @@ function normalizeReminderStatus(status: string): ReminderStatus | "hidden" {
   if (status === "nadcházející") return "upcoming";
   if (status === "deaktivovaný" || status === "deactivated") return "hidden";
   return "upcoming";
+}
+
+function mapStatusToBackend(status: ReminderStatus): string {
+  const mapping = { upcoming: "nadcházející", "due-soon": "brzy", overdue: "po termínu" };
+  return mapping[status] || "nadcházející";
 }
 
 const WEEKDAYS = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"];
@@ -63,6 +68,8 @@ export default function RemindersPage() {
   const [selectedDayData, setSelectedDayData] = useState<{ reminders: any[]; googleEvents: GoogleCalendarEvent[] } | null>(null);
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [addOpen, setAddOpen] = useState(false);
+  const [editingReminder, setEditingReminder] = useState<any | null>(null);
+  const [editDate, setEditDate] = useState<Date | undefined>(undefined);
   const [form, setForm] = useState({ client_id: "", grave_id: "", next_date: undefined as Date | undefined, status: "upcoming" as ReminderStatus });
 
   const year = currentMonth.getFullYear();
@@ -78,6 +85,7 @@ export default function RemindersPage() {
   const syncGoogle = useGoogleCalendarSync();
   const disconnectGoogle = useGoogleCalendarDisconnect();
   const addReminder = useAddReminder();
+  const updateReminder = useUpdateReminder();
 
   const clientGraves = graves.filter((g: any) => g.client_id === form.client_id);
 
@@ -122,9 +130,25 @@ export default function RemindersPage() {
       return;
     }
     addReminder.mutate(
-      { client_id: Number(form.client_id), grave_id: Number(form.grave_id), next_date: format(form.next_date, "yyyy-MM-dd"), status: form.status },
+      { client_id: Number(form.client_id), grave_id: Number(form.grave_id), next_date: format(form.next_date, "yyyy-MM-dd"), status: mapStatusToBackend(form.status) as any },
       {
         onSuccess: () => { setAddOpen(false); setForm({ client_id: "", grave_id: "", next_date: undefined, status: "upcoming" }); toast({ title: "Připomínka vytvořena" }); },
+        onError: (e) => toast({ title: "Chyba", description: e.message, variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleEditDate = () => {
+    if (!editingReminder || !editDate) return;
+    const normalizedStatus = normalizeReminderStatus(String(editingReminder.status ?? ""));
+    updateReminder.mutate(
+      { id: editingReminder.id, next_date: format(editDate, "yyyy-MM-dd"), status: mapStatusToBackend(normalizedStatus) as any },
+      {
+        onSuccess: () => {
+          setEditingReminder(null);
+          setEditDate(undefined);
+          toast({ title: "Připomínka upravena" });
+        },
         onError: (e) => toast({ title: "Chyba", description: e.message, variant: "destructive" }),
       }
     );
@@ -190,8 +214,6 @@ export default function RemindersPage() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="upcoming">Nadcházející</SelectItem>
-                      <SelectItem value="due-soon">Brzy</SelectItem>
-                      <SelectItem value="overdue">Po termínu</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -295,15 +317,16 @@ export default function RemindersPage() {
                     {dayReminders.slice(0, 2).map((r: any) => (
                       (() => {
                         const normalizedStatus = normalizeReminderStatus(String(r.status ?? ""));
+                        const clientName = r.clients?.full_name || r.clients?.company || "–"
                         const graveName = r.graves?.name_on_grave || r.clients?.full_name || "—";
                         const sequence = r.cleaning_sequence && r.cleaning_total ? `${r.cleaning_sequence}/${r.cleaning_total}` : "";
                         return (
                       <div key={r.id} className={`text-[11px] leading-tight px-1.5 py-0.5 rounded truncate flex items-center gap-1 ${
-                        normalizedStatus === "overdue" ? "bg-destructive/10 text-destructive" :
-                        normalizedStatus === "due-soon" ? "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]" :
-                        "bg-primary/10 text-primary"
+                        normalizedStatus === "overdue" ? "bg-red-100 text-red-800" :
+                        normalizedStatus === "due-soon" ? "bg-yellow-100 text-yellow-800" :
+                        "bg-blue-100 text-blue-800"
                       }`}>
-                        <span>{graveName}</span>
+                        <span>{clientName} <br />({graveName})</span>
                         {sequence && <span className="font-semibold">({sequence})</span>}
                       </div>
                         );
@@ -334,14 +357,15 @@ export default function RemindersPage() {
           <DialogHeader><DialogTitle>Detail připomínek</DialogTitle></DialogHeader>
           <div className="space-y-3 max-h-[60vh] overflow-y-auto">
             {selectedDayData?.reminders.map((r: any) => {
-              const config = statusConfig[normalizeReminderStatus(String(r.status ?? ""))];
+              const normalizedStatus = normalizeReminderStatus(String(r.status ?? ""));
+              const config = statusConfig[normalizedStatus];
               const Icon = config.icon;
               const sequence = r.cleaning_sequence && r.cleaning_total ? `${r.cleaning_sequence}/${r.cleaning_total}` : "";
               return (
-                <Card key={r.id}>
+                <Card key={r.id} className={`border ${config.bgCard}`}>
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${config.bg}`}>
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${config.badgeClass}`}>
                         <Icon className={`h-4 w-4 ${config.text}`} />
                       </div>
                       <div className="flex-1">
@@ -349,7 +373,7 @@ export default function RemindersPage() {
                         <p className="text-sm text-muted-foreground">{r.graves?.cemetery_name} / #{r.graves?.grave_number}</p>
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                           <span className="text-xs text-muted-foreground">{r.next_date}</span>
-                          <Badge className={`${config.className} border-0 text-xs`}>{config.label}</Badge>
+                          <Badge className={`${config.badgeClass} border-0 text-xs`}>{config.label}</Badge>
                           {sequence && <Badge variant="outline" className="text-xs font-semibold">{sequence} úklid</Badge>}
                         </div>
                         {r.graves && (
@@ -357,6 +381,48 @@ export default function RemindersPage() {
                             Základní cena: {Number(r.graves.base_price).toLocaleString()} Kč · Četnost: {r.graves.cleaning_frequency}/rok
                           </p>
                         )}
+                      </div>
+                      <div>
+                        <Dialog open={editingReminder?.id === r.id} onOpenChange={(open) => {
+                            if (!open) setEditingReminder(null);
+                          }}>
+                            <DialogTrigger asChild>
+                              <Button
+                                className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingReminder(r);
+                                  setEditDate(new Date(r.next_date));
+                                }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil w-4 h-4"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></svg>
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-md">
+                              <DialogHeader><DialogTitle>Změnit datum připomínky</DialogTitle></DialogHeader>
+                              <div className="space-y-3">
+                                <div className="space-y-1">
+                                  <Label>Nové datum</Label>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button variant="outline" className={cn("w-full justify-start text-left", !editDate && "text-muted-foreground")}>
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {editDate ? format(editDate, "PPP") : "Vyberte nové datum"}
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                      <Calendar mode="single" selected={editDate} onSelect={setEditDate} className="pointer-events-auto" />
+                                    </PopoverContent>
+                                  </Popover>
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                  <Button variant="outline" onClick={() => setEditingReminder(null)}>Zrušit</Button>
+                                  <Button onClick={handleEditDate} disabled={updateReminder.isPending || !editDate}>Uložit</Button>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                       </div>
                     </div>
                   </CardContent>
